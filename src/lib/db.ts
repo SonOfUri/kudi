@@ -1,4 +1,6 @@
 import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
+
 import { PrismaClient } from "@/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as {
@@ -10,7 +12,14 @@ function createPrismaClient() {
   if (!url) {
     throw new Error("DATABASE_URL is not set");
   }
-  const adapter = new PrismaPg(url);
+  /** Neon cold start can take 30–90s; allow a long connect wait window. */
+  const pool = new Pool({
+    connectionString: url,
+    max: 10,
+    connectionTimeoutMillis: 120_000,
+    idleTimeoutMillis: 30_000,
+  });
+  const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 }
 

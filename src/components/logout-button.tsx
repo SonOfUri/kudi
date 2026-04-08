@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 
+import { clearKudiLocalProfile } from "@/lib/kudi-local-profile";
+
 export function LogoutButton() {
   const router = useRouter();
 
@@ -13,10 +15,11 @@ export function LogoutButton() {
           method: "POST",
           credentials: "include",
         });
+        clearKudiLocalProfile();
         router.push("/login");
         router.refresh();
       }}
-      className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      className="min-h-12 w-full rounded-xl bg-primary px-6 text-base font-medium text-primary-foreground active:bg-primary-hover sm:w-auto"
     >
       Log out
     </button>

@@ -2,12 +2,12 @@ import { redirect } from "next/navigation";
 
 import { getSessionUser } from "@/lib/auth/session";
 
-import { LoginScreen } from "./login-screen";
+import { OnboardingWizard } from "./onboarding-wizard";
 
-export default async function LoginPage() {
+export default async function OnboardingPage() {
   if (await getSessionUser()) {
     redirect("/home");
   }
 
-  return <LoginScreen />;
+  return <OnboardingWizard />;
 }

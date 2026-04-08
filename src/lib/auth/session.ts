@@ -16,7 +16,14 @@ export async function getSessionUser() {
     const { sub: userId } = await verifySessionToken(token);
     const user = await db.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        countryCode: true,
+        createdAt: true,
+      },
     });
     return user;
   } catch {

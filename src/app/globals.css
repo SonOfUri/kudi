@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
-/* FT Regula Neue — add web font: copy your .woff2 here as public/fonts/ft-regula-neue.woff2
-   (Foundry Type kits usually ship .woff2; PostScript/SVG-only exports need conversion.) */
+/* FT Regula Neue — add web font: copy your .woff2 here as public/fonts/ft-regula-neue.woff2 */
 @font-face {
   font-family: "FT Regula Neue";
   src: url("/fonts/ft-regula-neue.woff2") format("woff2");
@@ -11,25 +10,208 @@
 }
 
 :root {
+  color-scheme: light;
+
+  /* Phone-first column width (matches header, tab bar, sheets) */
+  --app-max-width: 430px;
+
+  /* Brand */
+  --primary: #095342;
+  --primary-hover: #074030;
+  --primary-foreground: #f7fbf9;
+  --primary-muted: #e3f0eb;
+  --primary-subtle: #c5ddd4;
+
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #0d1815;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #d4e3dd;
+  --muted: #5a6f67;
+  --ring: color-mix(in srgb, var(--primary) 38%, transparent);
+
+  /* Scrollbars — strong contrast so thumbs read on pastel tracks */
+  --scrollbar-thumb: color-mix(in srgb, var(--primary) 72%, #2d4a42);
+  --scrollbar-thumb-hover: var(--primary);
+  --scrollbar-track: #e6efe9;
+}
+
+@keyframes kudi-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes kudi-face-happy {
+  0% {
+    transform: scale(0.65) translateY(12px);
+    opacity: 0;
+  }
+  45% {
+    transform: scale(1.08) translateY(-6px);
+    opacity: 1;
+  }
+  70% {
+    transform: scale(0.98) translateY(2px);
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes kudi-face-happy-idle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  33% {
+    transform: translateY(-3px) rotate(-2deg);
+  }
+  66% {
+    transform: translateY(-1px) rotate(2deg);
+  }
+}
+
+@keyframes kudi-face-sad {
+  0% {
+    transform: scale(0.65) rotate(8deg);
+    opacity: 0;
+  }
+  55% {
+    transform: scale(1.05) rotate(-6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes kudi-face-sad-idle {
+  0%,
+  100% {
+    transform: rotate(0deg) translateX(0);
+  }
+  25% {
+    transform: rotate(-4deg) translateX(-2px);
+  }
+  50% {
+    transform: rotate(4deg) translateX(2px);
+  }
+  75% {
+    transform: rotate(-3deg) translateX(-1px);
+  }
 }
 
 @theme inline {
+  --animate-kudi-sheet-up: kudi-sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-muted: var(--primary-muted);
+  --color-primary-subtle: var(--primary-subtle);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-ring: var(--ring);
   --font-sans: "FT Regula Neue", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  min-height: 100%;
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%;
+  background-color: #ffffff;
 }
 
 body {
-  background: var(--background);
+  min-height: 100dvh;
+  overflow-x: hidden;
+  background-color: #ffffff;
   color: var(--foreground);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Scrollbars: Firefox + desktop Chrome / Edge / Safari.
+ * iOS Safari does not paint custom ::-webkit-scrollbar on overflow scrollers (overlay only).
+ */
+* {
+  scrollbar-width: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+  border-radius: 9999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 3px solid var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
+}
+
+/**
+ * Use on overflow-y-auto regions where the scrollbar must read clearly
+ * (e.g. country list). Slightly wider thumb than the global default.
+ */
+.kudi-scroll {
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+.kudi-scroll::-webkit-scrollbar {
+  width: 14px;
+}
+
+.kudi-scroll::-webkit-scrollbar-thumb {
+  border: 3px solid var(--scrollbar-track);
+}
+
+/* FeedbackModal: stacked entrance + looping idle */
+.kudi-feedback-face--happy {
+  display: inline-block;
+  animation:
+    kudi-face-happy 0.7s cubic-bezier(0.34, 1.4, 0.64, 1) both,
+    kudi-face-happy-idle 2.2s ease-in-out 0.75s infinite;
+}
+
+.kudi-feedback-face--sad {
+  display: inline-block;
+  animation:
+    kudi-face-sad 0.55s cubic-bezier(0.34, 1.3, 0.64, 1) both,
+    kudi-face-sad-idle 1.45s ease-in-out 0.58s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kudi-feedback-face--happy,
+  .kudi-feedback-face--sad {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
 }
