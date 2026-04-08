@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* FT Regula Neue — add web font: copy your .woff2 here as public/fonts/ft-regula-neue.woff2
+   (Foundry Type kits usually ship .woff2; PostScript/SVG-only exports need conversion.) */
+@font-face {
+  font-family: "FT Regula Neue";
+  src: url("/fonts/ft-regula-neue.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -8,7 +18,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: "FT Regula Neue", ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono);
 }
 
@@ -22,5 +32,4 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
 }
