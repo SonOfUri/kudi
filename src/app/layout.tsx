@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
+
+import { QueryProvider } from "@/components/query-provider";
+
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -28,9 +31,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistMono.variable} min-h-dvh bg-white antialiased`}>
       <body className="bg-white font-sans text-foreground">
-        <div className="relative mx-auto flex min-h-dvh w-full max-w-[min(100%,var(--app-max-width))] flex-col bg-surface">
-          {children}
-        </div>
+        <QueryProvider>
+          <div className="relative mx-auto flex min-h-dvh w-full max-w-[min(100%,var(--app-max-width))] flex-col bg-surface">
+            {children}
+          </div>
+        </QueryProvider>
       </body>
     </html>
   );

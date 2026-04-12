@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 27 18" aria-hidden="true">
+  <rect width="27" height="18" fill="#039"/>
+  <g fill="#fc0" transform="translate(13.5 9)">
+    <circle r="0.85" cy="-5.2"/>
+    <circle r="0.85" transform="rotate(30) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(60) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(90) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(120) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(150) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(180) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(210) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(240) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(270) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(300) translate(0 -5.2)"/>
+    <circle r="0.85" transform="rotate(330) translate(0 -5.2)"/>
+  </g>
+</svg>

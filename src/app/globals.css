@@ -29,11 +29,6 @@
   --border: #d4e3dd;
   --muted: #5a6f67;
   --ring: color-mix(in srgb, var(--primary) 38%, transparent);
-
-  /* Scrollbars — strong contrast so thumbs read on pastel tracks */
-  --scrollbar-thumb: color-mix(in srgb, var(--primary) 72%, #2d4a42);
-  --scrollbar-thumb-hover: var(--primary);
-  --scrollbar-track: #e6efe9;
 }
 
 @keyframes kudi-sheet-up {
@@ -42,6 +37,18 @@
   }
   to {
     transform: translateY(0);
+  }
+}
+
+@keyframes kudi-balance-live {
+  0%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.88;
+    transform: translateY(-2px);
   }
 }
 
@@ -109,6 +116,7 @@
 
 @theme inline {
   --animate-kudi-sheet-up: kudi-sheet-up 0.28s cubic-bezier(0.32, 0.72, 0, 1) both;
+  --animate-kudi-balance-live: kudi-balance-live 3.5s ease-in-out infinite;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -142,54 +150,23 @@ body {
 }
 
 /*
- * Scrollbars: Firefox + desktop Chrome / Edge / Safari.
- * iOS Safari does not paint custom ::-webkit-scrollbar on overflow scrollers (overlay only).
+ * Hide scrollbars app-wide (`*`). Overflow regions still scroll; thumbs are not shown.
  */
 * {
-  scrollbar-width: auto;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 *::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  display: none;
+  width: 0;
+  height: 0;
+  background: transparent;
 }
 
-*::-webkit-scrollbar-track {
-  background: var(--scrollbar-track);
-  border-radius: 9999px;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 9999px;
-  border: 3px solid var(--scrollbar-track);
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
-}
-
-*::-webkit-scrollbar-corner {
-  background: var(--scrollbar-track);
-}
-
-/**
- * Use on overflow-y-auto regions where the scrollbar must read clearly
- * (e.g. country list). Slightly wider thumb than the global default.
- */
-.kudi-scroll {
-  scrollbar-gutter: stable;
-  scrollbar-width: auto;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
-}
-
-.kudi-scroll::-webkit-scrollbar {
-  width: 14px;
-}
-
-.kudi-scroll::-webkit-scrollbar-thumb {
-  border: 3px solid var(--scrollbar-track);
+/* Home: subtle “live” balance motion */
+.kudi-balance-live {
+  animation: var(--animate-kudi-balance-live);
 }
 
 /* FeedbackModal: stacked entrance + looping idle */
@@ -214,4 +191,9 @@ body {
     opacity: 1;
     transform: none;
   }
+}
+
+
+button:hover {
+  cursor: pointer;
 }

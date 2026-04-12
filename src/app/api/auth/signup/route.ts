@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
+import { Wallet } from "ethers";
 
 import { setSessionCookie } from "@/lib/auth/cookie";
 import { createSessionToken } from "@/lib/auth/jwt";
 import { hashPassword } from "@/lib/auth/password";
 import { db } from "@/lib/db";
+import { Prisma } from "@/generated/prisma/client";
 import {
   CLIENT_DB_UNAVAILABLE_MESSAGE,
   CLIENT_GENERIC_SERVER_MESSAGE,
@@ -46,24 +48,49 @@ export async function POST(request: Request) {
       if (existing) {
         return { kind: "exists" as const };
       }
-      const user = await db.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          firstName: profile.firstName,
-          lastName: profile.lastName,
-          countryCode: profile.countryCode,
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-          countryCode: true,
-          createdAt: true,
-        },
-      });
-      return { kind: "created" as const, user };
+
+      const secret = process.env.AUTH_SECRET;
+      if (!secret || secret.length < 16) {
+        throw new Error("AUTH_SECRET must be at least 16 characters.");
+      }
+      const ethWallet = Wallet.createRandom();
+      const encryptedPrivateKey = await ethWallet.encrypt(secret);
+
+      try {
+        const user = await db.$transaction(async (tx) => {
+          const u = await tx.user.create({
+            data: {
+              email: normalizedEmail,
+              passwordHash,
+              firstName: profile.firstName,
+              lastName: profile.lastName,
+              countryCode: profile.countryCode,
+            },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              countryCode: true,
+              createdAt: true,
+            },
+          });
+          await tx.wallet.create({
+            data: {
+              userId: u.id,
+              address: ethWallet.address,
+              encryptedPrivateKey,
+            },
+          });
+          return u;
+        });
+        return { kind: "created" as const, user };
+      } catch (err) {
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+          return { kind: "exists" as const };
+        }
+        throw err;
+      }
     });
 
     if (outcome.kind === "exists") {

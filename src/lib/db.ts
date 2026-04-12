@@ -23,8 +23,37 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const db = globalForPrisma.prisma ?? createPrismaClient();
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = db;
+/**
+ * Next.js dev keeps `globalThis` across HMR. A PrismaClient created before
+ * `prisma generate` (or before new models existed) will not expose new delegates,
+ * which surfaces as `undefined.create`. Recreate when codegen and client disagree.
+ */
+function clientMatchesCodegen(client: PrismaClient): boolean {
+  return typeof client.paycrestOnrampOrder !== "undefined";
 }
+
+function getPrisma(): PrismaClient {
+  let client = globalForPrisma.prisma;
+  if (client && clientMatchesCodegen(client)) {
+    return client;
+  }
+  if (client) {
+    void client.$disconnect().catch(() => {});
+    globalForPrisma.prisma = undefined;
+  }
+  client = createPrismaClient();
+  globalForPrisma.prisma = client;
+  return client;
+}
+
+/** Lazy proxy so every access runs `getPrisma()` (fixes stale singleton after HMR). */
+export const db = new Proxy({} as PrismaClient, {
+  get(_target, prop, _receiver) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop, client);
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});

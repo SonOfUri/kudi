@@ -1,51 +1,50 @@
 "use client";
 
 import type { LucideIcon } from "lucide-react";
-import { BarChart3, Home, Landmark, User } from "lucide-react";
-import Image from "next/image";
+import { Home, Landmark, PieChart, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const nav: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: "/home", label: "Home", Icon: Home },
-  { href: "/simulation", label: "Yield", Icon: BarChart3 },
+  { href: "/portfolio", label: "Portfolio", Icon: PieChart },
   { href: "/markets", label: "Markets", Icon: Landmark },
   { href: "/profile", label: "Profile", Icon: User },
 ];
-
-const iconProps = { className: "size-6 shrink-0", strokeWidth: 1.5 as const, "aria-hidden": true as const };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
     <div className="flex min-h-dvh flex-1 flex-col">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-surface-elevated/95 px-4 pb-3 backdrop-blur-md pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <Link href="/home" className="flex min-h-11 min-w-11 items-center gap-2 py-1 pr-2" aria-label="Kudi home">
-          <Image src="/logo/logo.svg" alt="" width={32} height={32} className="size-8 shrink-0" />
-          <span className="text-sm font-semibold tracking-tight text-foreground">Kudi</span>
-        </Link>
-      </header>
-
-      <main className="flex flex-1 flex-col px-4 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-5">{children}</main>
+      <main className="flex flex-1 flex-col px-4 pb-[calc(5rem+env(safe-area-inset-bottom))]">
+        {children}
+      </main>
 
       <nav
-        className="fixed bottom-0 left-1/2 z-10 w-full max-w-[min(100%,var(--app-max-width))] -translate-x-1/2 border-t border-border bg-surface-elevated/95 backdrop-blur-md pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="pointer-events-none fixed bottom-0 left-1/2 z-10 w-full max-w-[min(100%,var(--app-max-width))] -translate-x-1/2 pb-[max(0.65rem,env(safe-area-inset-bottom))] pt-0"
         aria-label="Main"
       >
-        <ul className="flex w-full justify-between gap-0 px-1">
+        <ul className="pointer-events-auto flex w-full items-stretch justify-between gap-0 border-0 bg-surface py-2">
           {nav.map(({ href, label, Icon }) => {
             const active = pathname === href || pathname.startsWith(href + "/");
             return (
-              <li key={href} className="min-w-0 flex-1">
+              <li key={href} className="flex min-w-0 flex-1 justify-center">
                 <Link
                   href={href}
-                  className={`flex min-h-[3.25rem] flex-col items-center justify-center gap-0.5 px-1 py-1 text-[11px] font-medium leading-tight transition-colors active:opacity-80 ${
-                    active ? "text-primary" : "text-muted"
+                  aria-label={label}
+                  aria-current={active ? "page" : undefined}
+                  className={`flex size-12 max-w-[3.75rem] flex-1 items-center justify-center rounded-xl transition-[transform,background-color,color,box-shadow] duration-200 active:scale-[0.94] ${
+                    active
+                      ? "bg-primary-muted text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]"
+                      : "text-muted hover:bg-black/[0.03] hover:text-foreground"
                   }`}
                 >
-                  <Icon {...iconProps} />
-                  <span className="truncate">{label}</span>
+                  <Icon
+                    className="size-6 shrink-0"
+                    strokeWidth={active ? 2 : 1.5}
+                    aria-hidden
+                  />
                 </Link>
               </li>
             );

@@ -12,16 +12,58 @@ datasource db {
   provider = "postgresql"
 }
 
+enum WalletActivityType {
+  VAULT_INVEST
+  VAULT_WITHDRAW
+  USDC_WITHDRAW
+  GAS_SUBSIDY
+}
+
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  passwordHash  String
-  firstName     String?
-  lastName      String?
+  id                 String                 @id @default(cuid())
+  email              String                 @unique
+  passwordHash       String
+  firstName          String?
+  lastName           String?
   /// ISO-style country code from onboarding (e.g. NG, US), optional if skipped
-  countryCode   String?
-  createdAt     DateTime @default(now())
-  wallet        Wallet?
+  countryCode        String?
+  createdAt          DateTime               @default(now())
+  wallet             Wallet?
+  activities         WalletActivity[]
+  paycrestOnrampOrders PaycrestOnrampOrder[]
+}
+
+/// Fiat → USDC (Base) orders created via Paycrest sender API.
+model PaycrestOnrampOrder {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paycrestOrderId  String   @unique
+  reference        String   @unique
+  status           String   @default("PENDING")
+  fiatCurrency     String
+  amountFiat       String
+  rate             String?
+  providerAccount  Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model WalletActivity {
+  id                  String              @id @default(cuid())
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type                WalletActivityType
+  /// USDC base units (6 decimals) when applicable; null for gas subsidy etc.
+  amountUsdcBaseUnits String?
+  txHash              String?
+  explorerUrl         String?
+  meta                Json?
+  createdAt           DateTime            @default(now())
+
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model Wallet {
@@ -30,4 +72,8 @@ model Wallet {
   user                User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   address             String
   encryptedPrivateKey String
+  /// Set when GAS_SPONSOR successfully sent starter ETH (see `lib/gas-sponsor.ts`).
+  gasSponsoredAt      DateTime?
+  /// Failed / partial attempts; capped so we do not hammer the sponsor wallet.
+  gasSponsorAttempts  Int      @default(0)
 }

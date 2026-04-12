@@ -352,7 +352,7 @@ export function OnboardingWizard() {
                   className="w-full rounded-xl border border-border bg-white py-3.5 pl-12 pr-4 text-base outline-none ring-0 placeholder:text-neutral-400 focus:border-primary"
                 />
               </div>
-              <ul className="kudi-scroll mt-4 max-h-[min(42vh,320px)] min-h-[120px] flex-1 space-y-0 overflow-y-auto rounded-xl border border-neutral-100">
+              <ul className="mt-4 max-h-[min(42vh,320px)] min-h-[120px] flex-1 space-y-0 overflow-y-auto rounded-xl border border-neutral-100">
                 {filteredCountries.map((c) => (
                   <li key={c.code}>
                     <button
