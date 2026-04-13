@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Kudi
 
-## Getting Started
+Kudi is a **Next.js** web app for on-chain earn on **Base**: portfolio, vault discovery, deposits and withdrawals, custodial wallet flows, and optional fiat on-ramp. Product data is merged from the app database and **LI.FI** earn positions; vault display values can be reconciled with on-chain ERC-4626 redeemable amounts where applicable.
 
-First, run the development server:
+## Stack
+
+- **Next.js** (App Router), **React**, **TypeScript**
+- **PostgreSQL** via **Prisma**
+- **ethers** for Base / vault reads
+- **LI.FI** Earn API + Composer quotes (see below)
+
+## Getting started
+
+From this directory:
 
 ```bash
+npm install
+cp .env.example .env
+# Edit .env: DATABASE_URL, AUTH_SECRET, LIFI_API_KEY, and any optional keys.
+
+npm run db:push   # or db:migrate — see Prisma workflow you use
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | Purpose |
+|--------|---------|
+| `npm run dev` | Development server (Turbopack) |
+| `npm run build` | Production build |
+| `npm run start` | Run production server |
+| `npm run lint` | ESLint |
+| `npm run db:generate` | `prisma generate` |
+| `npm run db:push` | `prisma db push` |
+| `npm run db:migrate` | `prisma migrate dev` |
 
-## Learn More
+Environment variables are documented in **`.env.example`** (database, auth secret, `LIFI_API_KEY`, optional Base RPC, gas sponsor, Paycrest).
 
-To learn more about Next.js, take a look at the following resources:
+## LI.FI usage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+All LI.FI calls use the **`x-lifi-api-key`** header from **`LIFI_API_KEY`**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| API | Base URL (in code) | Purpose |
+|-----|-------------------|---------|
+| Earn Data | `https://earn.li.fi` | `GET /v1/earn/vaults`, portfolio positions (`/v1/earn/portfolio/{address}/positions`) |
+| Composer | `https://li.quest/v1/quote` | Quotes for deposit / withdraw route building |
 
-## Deploy on Vercel
+Server helpers live under **`src/lib/lifi/`** (for example `server.ts`, `constants.ts`, portfolio merge and vault helpers). App routes include **`/api/lifi/vaults`**, **`/api/lifi/deposit`**, **`/api/lifi/withdraw`**, and portfolio aggregation in **`/api/wallet/portfolio`**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Project layout (high level)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- **`src/app/`** — routes, layouts, API route handlers
+- **`src/components/`** — UI components
+- **`src/lib/`** — auth, chain config, LI.FI, wallet, Paycrest, etc.
+- **`prisma/`** — schema and migrations
+
+## Deploy
+
+Configure the same environment variables on your host (e.g. Vercel). Ensure `DATABASE_URL` uses a connection string appropriate for production (for example `sslmode=verify-full` as in `.env.example`).
