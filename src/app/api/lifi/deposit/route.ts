@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import type { Prisma } from "@/generated/prisma/client";
 import { getSessionUser } from "@/lib/auth/session";
 import {
   baseExplorerTx,
@@ -80,31 +81,36 @@ export async function POST(req: Request) {
     const apySnapshotAt = new Date().toISOString();
     const earnSnap = await fetchEarnVaultApySnapshot(vaultAddress);
 
-    const meta: Record<string, unknown> = {
+    const apyMeta: Prisma.InputJsonObject = earnSnap
+      ? {
+          apyTotalAtDeposit: earnSnap.apyTotal,
+          apyBaseAtDeposit: earnSnap.apyBase ?? null,
+          apyRewardAtDeposit: earnSnap.apyReward ?? null,
+          apySnapshotSource: "earn_api",
+        }
+      : clientApy != null && Number.isFinite(clientApy)
+        ? {
+            apyTotalAtDeposit: clientApy,
+            apyBaseAtDeposit: null,
+            apyRewardAtDeposit: null,
+            apySnapshotSource: "client",
+          }
+        : {
+            apyTotalAtDeposit: null,
+            apyBaseAtDeposit: null,
+            apyRewardAtDeposit: null,
+            apySnapshotSource: "unknown",
+          };
+
+    const meta: Prisma.InputJsonValue = {
       vaultAddress,
       vaultLabel: vaultLabel ?? null,
       protocolName: protocolName ?? null,
       vaultSlug: vaultSlug ?? null,
       chainId,
       apySnapshotAt,
+      ...apyMeta,
     };
-
-    if (earnSnap) {
-      meta.apyTotalAtDeposit = earnSnap.apyTotal;
-      meta.apyBaseAtDeposit = earnSnap.apyBase ?? null;
-      meta.apyRewardAtDeposit = earnSnap.apyReward ?? null;
-      meta.apySnapshotSource = "earn_api";
-    } else if (clientApy != null && Number.isFinite(clientApy)) {
-      meta.apyTotalAtDeposit = clientApy;
-      meta.apyBaseAtDeposit = null;
-      meta.apyRewardAtDeposit = null;
-      meta.apySnapshotSource = "client";
-    } else {
-      meta.apyTotalAtDeposit = null;
-      meta.apyBaseAtDeposit = null;
-      meta.apyRewardAtDeposit = null;
-      meta.apySnapshotSource = "unknown";
-    }
 
     await recordWalletActivity({
       userId: user.id,

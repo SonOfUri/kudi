@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     let value: bigint;
     if (amount === "max") {
       value = await usdc.balanceOf(fromAddress);
-      if (value <= 0n) {
+      if (value <= BigInt(0)) {
         return NextResponse.json({ error: "No USDC balance to send." }, { status: 400 });
       }
     } else {
