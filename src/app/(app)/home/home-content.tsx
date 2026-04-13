@@ -83,12 +83,13 @@ function formatActivityWhen(iso: string): string {
 
 type HomePortfolioRow = {
   position: { balanceUsd?: string };
-  vault: { apyTotal?: number } | null;
+  vault: { apyTotal?: number; vaultAddress?: string } | null;
 };
 
 function poolsFromPortfolioRows(rows: HomePortfolioRow[] | undefined): PoolSlice[] {
   if (!rows?.length) return [];
   return rows
+    .filter((row) => row.vault != null && typeof row.vault.vaultAddress === "string")
     .map((row) => {
       const usd = Number(row.position?.balanceUsd);
       const principal = Number.isFinite(usd) && usd > 0 ? usd : 0;

@@ -156,10 +156,16 @@ export async function augmentPortfolioWithAppInvestVaults(
   for (const idx of unmatchedIdx) {
     const pos = rawPositions[idx];
     const sym = positionAssetSymbol(pos);
-    const cand = candidates.find(
-      (c) =>
-        !usedCandAddr.has(c.addr) && earnVaultMatchesAssetSymbol(c.earn, sym),
-    );
+    const usd = positionUsd(pos);
+    const cand = candidates.find((c) => {
+      if (usedCandAddr.has(c.addr) || !earnVaultMatchesAssetSymbol(c.earn, sym)) return false;
+      if (c.deposited > 0) {
+        const tol = Math.max(0.5, c.deposited * 0.25);
+        return Math.abs(usd - c.deposited) <= tol;
+      }
+      /** No in-app deposit row: avoid pairing liquid wallet USDC (~$3) to a vault that only matches on symbol. */
+      return usd >= Math.max(10, 0.5);
+    });
     if (!cand) continue;
 
     usedCandAddr.add(cand.addr);
@@ -170,6 +176,45 @@ export async function augmentPortfolioWithAppInvestVaults(
       protocolNameByVault.get(cand.addr),
     );
     appDepositAttribution[idx] = true;
+  }
+
+  /**
+   * Symbol-based pairing often fails (Li.fi asset label vs Earn metadata). Without this pass we would
+   * leave the Li.fi line unmatched (vault null → counted as “wallet” in totals) and also append a
+   * synthetic pool row → double-count in portfolio aggregate.
+   */
+  const usedOrphanIdx = new Set<number>();
+  const orphanLines = displayPositions
+    .map((pos, i) => ({ i, usd: positionUsd(pos) }))
+    .filter(({ i, usd }) => matches[i] == null && usd > 1e-9);
+
+  const candsForAmount = candidates
+    .filter((c) => !usedCandAddr.has(c.addr))
+    .sort((a, b) => b.deposited - a.deposited);
+
+  for (const cand of candsForAmount) {
+    if (cand.deposited <= 0) continue;
+    const tol = Math.max(0.5, cand.deposited * 0.15);
+    let best: { i: number; diff: number } | null = null;
+    for (const { i, usd } of orphanLines) {
+      if (usedOrphanIdx.has(i)) continue;
+      const diff = Math.abs(usd - cand.deposited);
+      if (diff <= tol && (best == null || diff < best.diff)) {
+        best = { i, diff };
+      }
+    }
+    if (best != null) {
+      usedOrphanIdx.add(best.i);
+      usedCandAddr.add(cand.addr);
+      const pos = rawPositions[best.i];
+      matches[best.i] = matchFromEarnAndBalance(cand.earn, cand.addr, cand.bal, cand.label);
+      displayPositions[best.i] = overlayEarnOnLiFiPosition(
+        pos,
+        cand.earn,
+        protocolNameByVault.get(cand.addr),
+      );
+      appDepositAttribution[best.i] = true;
+    }
   }
 
   const appended: AppVaultPortfolioAugment["appended"] = [];

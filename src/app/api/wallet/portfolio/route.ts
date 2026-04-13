@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth/session";
 import { KUDI_DEFAULT_CHAIN_ID, LIFI_EARN_BASE } from "@/lib/lifi/constants";
 import { augmentPortfolioWithAppInvestVaults } from "@/lib/lifi/portfolio-app-vaults";
+import { redeemableUsdcHumanFromVaultShares } from "@/lib/lifi/vault-redeemable-usdc";
 import type { MinimalEarnVault } from "@/lib/lifi/match-position-vault";
 import { matchPositionsToVaults } from "@/lib/lifi/match-position-vault";
 import { fetchEarnVaultsFromSearchParams, portfolioVaultMatchingSearchParams } from "@/lib/lifi/server";
@@ -27,6 +28,27 @@ function positionUsd(pos: unknown): number {
     return Number.isFinite(n) ? n : 0;
   }
   return 0;
+}
+
+/**
+ * Home shows `wallet USDC` + `portfolio`; portfolio must be **earn / vault** value only. Li.fi also
+ * returns liquid wallet USDC as a no-vault line — never add that to `totalValue` (avoids 31 − 3 = 28 style bugs).
+ * Same vault may still appear twice briefly; take max USD per vault address.
+ */
+function vaultBackedPortfolioUsd(
+  positions: Array<{ position: unknown; vault: { vaultAddress?: string } | null }>,
+): number {
+  const maxByVault = new Map<string, number>();
+  for (const row of positions) {
+    const addr = row.vault?.vaultAddress?.toLowerCase();
+    if (!addr) continue;
+    const usd = positionUsd(row.position);
+    if (!Number.isFinite(usd) || usd <= 0) continue;
+    maxByVault.set(addr, Math.max(maxByVault.get(addr) ?? 0, usd));
+  }
+  let sum = 0;
+  for (const v of maxByVault.values()) sum += v;
+  return sum;
 }
 
 function metaVaultAddress(meta: unknown): string | undefined {
@@ -105,12 +127,22 @@ function totalNetDepositedFromAppUsd(
 /**
  * Returns the authenticated user's Li.fi portfolio positions, matched Earn vaults,
  * and deposit/earn estimates from in-app activity.
+ *
+ * Debug Li.fi upstream payload:
+ * - `GET /api/wallet/portfolio?debugLifi=1` — includes `lifiDebug.raw` in JSON (while logged in).
+ * - `DEBUG_LIFI_PORTFOLIO=1` or `true` in env — `console.log` full Li.fi JSON on each portfolio request.
  */
-export async function GET() {
+export async function GET(req: Request) {
   const user = await getSessionUser();
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const { searchParams } = new URL(req.url);
+  const debugLifiQuery = searchParams.get("debugLifi") === "1";
+  const debugLifiEnv =
+    process.env.DEBUG_LIFI_PORTFOLIO === "1" || process.env.DEBUG_LIFI_PORTFOLIO === "true";
+  const logLifiRaw = debugLifiQuery || debugLifiEnv;
 
   try {
     const wallet = await ensureUserWallet(user.id);
@@ -138,10 +170,13 @@ export async function GET() {
     const data = (await res.json()) as { positions?: unknown[] };
     const rawPositions = Array.isArray(data.positions) ? data.positions : [];
 
-    const totalValue = rawPositions.reduce(
-      (sum: number, pos: unknown) => sum + positionUsd(pos),
-      0,
-    );
+    if (logLifiRaw) {
+      console.log(
+        "[api/wallet/portfolio] Li.fi portfolio response",
+        url,
+        JSON.stringify(data, null, 2),
+      );
+    }
 
     const depositRows = await db.walletActivity.findMany({
       where: { userId: user.id, type: WalletActivityType.VAULT_INVEST },
@@ -280,10 +315,27 @@ export async function GET() {
       });
     }
 
-    let totalValueOut = totalValue;
-    for (const extra of augmented.appended) {
-      totalValueOut += positionUsd(extra.position);
-    }
+    /** Prefer on-chain ERC-4626 redeemable USDC over Li.fi `balanceUsd` (often wrong vs actual exit quote). */
+    await Promise.all(
+      positions.map(async (row) => {
+        const v = row.vault;
+        if (!v?.vaultAddress || !v.shareBalance) return;
+        const onChain = await redeemableUsdcHumanFromVaultShares(
+          v.vaultAddress,
+          v.shareBalance,
+          KUDI_DEFAULT_CHAIN_ID,
+        );
+        if (onChain == null || !Number.isFinite(onChain) || onChain <= 0) return;
+        const pos = row.position;
+        if (!pos || typeof pos !== "object") return;
+        const p = pos as Record<string, unknown>;
+        row.position = { ...p, balanceUsd: String(onChain) };
+        const u = positionUsd(row.position);
+        row.estimatedEarnedUsd = illustrativeDailyEarnUsd(u, v.apyTotal);
+      }),
+    );
+
+    const totalValueOut = vaultBackedPortfolioUsd(positions);
 
     let estimatedEarnedSum = 0;
     let hasEarned = false;
@@ -298,7 +350,7 @@ export async function GET() {
       ? roundIllustrativeDailyEarnUsd(estimatedEarnedSum)
       : null;
 
-    return NextResponse.json({
+    const payload = {
       address: wallet.address,
       positions,
       totalValue: totalValueOut,
@@ -309,7 +361,18 @@ export async function GET() {
         earnNote:
           "Est. earned is an illustrative ~1-day amount: current balance x (APY / 365), simple daily slice. Not realized yield; APYs and balances change.",
       },
-    });
+      ...(debugLifiQuery
+        ? {
+            lifiDebug: {
+              requestUrl: url,
+              /** Parsed JSON body from Li.fi (before Kudi matching / augmentation). */
+              raw: data,
+            },
+          }
+        : {}),
+    };
+
+    return NextResponse.json(payload);
   } catch (err) {
     console.error("[api/wallet/portfolio]", err);
     const message = err instanceof Error ? err.message : "Could not fetch portfolio.";
