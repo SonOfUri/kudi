@@ -55,10 +55,16 @@ export type LiFiQuoteResponse = {
     fromAmount?: string;
     fromChainId?: number;
     toChainId?: number;
-    toToken?: { decimals?: number };
+    toToken?: { decimals?: number; address?: string; symbol?: string };
     toAmount?: string;
   };
-  estimate?: { approvalAddress?: string };
+  estimate?: {
+    approvalAddress?: string;
+    /** Output amount in toToken base units (often present when `action.toAmount` is missing). */
+    toAmount?: string;
+    toAmountMin?: string;
+    toToken?: { decimals?: number; address?: string };
+  };
   transactionRequest?: Record<string, string | number | undefined>;
 };
 

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useId } from "react";
 import { createPortal } from "react-dom";
 
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
+
 const STORAGE_KEY = "kudi_see_possible_modal_dismissed";
 
 type Props = {
@@ -77,15 +79,20 @@ export function SeePossibleModal({ open, onOpenChange }: Props) {
       aria-modal="true"
       aria-labelledby={titleId}
     >
-      <div className="flex justify-end px-4 pb-2 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <button
-          type="button"
-          onClick={close}
-          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm ring-1 ring-black/[0.04] active:bg-neutral-50"
-          aria-label="Close"
-        >
-          <X className="size-6" strokeWidth={2} aria-hidden />
-        </button>
+      <div className="flex flex-col items-stretch px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
+        <div className="flex justify-center pb-2">
+          <MobileSheetNotch />
+        </div>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={close}
+            className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-white text-foreground shadow-sm ring-1 ring-black/[0.04] active:bg-neutral-50"
+            aria-label="Close"
+          >
+            <X className="size-6" strokeWidth={2} aria-hidden />
+          </button>
+        </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col justify-center px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">

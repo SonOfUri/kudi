@@ -3,6 +3,8 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
+
 export type SortOption =
   | "apy-high"
   | "apy-low"
@@ -75,8 +77,10 @@ export function FiltersModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-xl">
-        <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden />
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 shadow-xl">
+        <div className="flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
 
         <div className="mt-4 flex items-start justify-between gap-4">
           <h2 id="filters-title" className="text-xl font-bold leading-snug text-foreground">

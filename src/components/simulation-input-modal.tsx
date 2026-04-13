@@ -3,6 +3,8 @@
 import { X } from "lucide-react";
 import { useState } from "react";
 
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
+
 type SimulationInputModalProps = {
   open: boolean;
   onClose: () => void;
@@ -67,7 +69,10 @@ export function SimulationInputModal({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 shadow-xl">
+        <div className="flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
         <div className="flex items-center justify-between">
           <h2 id="sim-input-title" className="text-lg font-semibold text-foreground">
             Add Money

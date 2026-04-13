@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   if (!isPaycrestOnrampConfigured()) {
     return NextResponse.json(
-      { error: "On-ramp is not configured.", code: "PAYCREST_DISABLED" },
+      { error: "Bank transfers are not available right now.", code: "FIAT_TRANSFER_DISABLED" },
       { status: 503 },
     );
   }
@@ -47,7 +47,9 @@ export async function GET(req: Request) {
     });
   } catch (e) {
     console.error("[api/paycrest/rate]", e);
-    const message = e instanceof Error ? e.message : "Rate request failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: "Could not load a rate right now. Try again in a moment." },
+      { status: 502 },
+    );
   }
 }

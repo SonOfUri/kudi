@@ -28,7 +28,7 @@ function mapPaycrestEventToStatus(event: string): string {
 }
 
 /**
- * Paycrest payment webhooks — verify HMAC, update `PaycrestOnrampOrder` by Paycrest order id.
+ * Paycrest payment webhooks — verify HMAC, update on-ramp or off-ramp order by Paycrest order id.
  */
 export async function POST(req: Request) {
   if (!getPaycrestSecretKey()) {
@@ -66,12 +66,18 @@ export async function POST(req: Request) {
   if (orderId) {
     const status = mapPaycrestEventToStatus(event);
     try {
-      const result = await db.paycrestOnrampOrder.updateMany({
+      const onramp = await db.paycrestOnrampOrder.updateMany({
         where: { paycrestOrderId: orderId },
         data: { status },
       });
-      if (result.count === 0) {
-        console.warn("[webhooks/paycrest] No local order for Paycrest id:", orderId);
+      if (onramp.count === 0) {
+        const offramp = await db.paycrestOfframpOrder.updateMany({
+          where: { paycrestOrderId: orderId },
+          data: { status },
+        });
+        if (offramp.count === 0) {
+          console.warn("[webhooks/paycrest] No local order for Paycrest id:", orderId);
+        }
       }
     } catch (e) {
       console.error("[webhooks/paycrest] DB update failed:", e);

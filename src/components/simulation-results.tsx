@@ -4,6 +4,7 @@ import { Clock, X } from "lucide-react";
 import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
 import {
   calculateCompoundGrowth,
   formatCurrency,
@@ -276,7 +277,10 @@ export function SimulationResults({
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[90dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-xl">
+      <div className="relative z-10 flex max-h-[90dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 shadow-xl">
+        <div className="flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
         <SimulationResultsView
           apy={apy}
           amount={amount}

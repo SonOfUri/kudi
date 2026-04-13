@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ChevronRight, RefreshCw, TrendingUp } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronRight, RefreshCw, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -23,35 +23,15 @@ function formatUsd(amount: number) {
   }).format(amount);
 }
 
-/** Estimated yield can be tiny; avoid rounding to $0. */
+/** Est. earned (illustrative daily) — extra decimals for small amounts. */
 function formatUsdEarned(amount: number) {
   if (!Number.isFinite(amount)) return "—";
-  const abs = Math.abs(amount);
-  if (abs === 0) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(0);
-  }
-  if (abs < 0.01) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 6,
-    }).format(amount);
-  }
-  if (abs < 1) {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 4,
-    }).format(amount);
-  }
-  return formatUsd(amount);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 6,
+  }).format(amount);
 }
 
 function protocolDisplayName(protocolName: string | undefined): string {
@@ -105,6 +85,7 @@ export function PortfolioContent() {
     apyTotal?: number;
     assetSymbol?: string;
   } | null>(null);
+  const [illustrativeGrowthOpen, setIllustrativeGrowthOpen] = useState(false);
 
   const rows = useMemo(() => data?.positions ?? [], [data?.positions]);
   const totalValue = data?.totalValue ?? 0;
@@ -188,7 +169,7 @@ export function PortfolioContent() {
         <>
           <section className="mt-6">
             <div className="rounded-2xl border border-border/80 bg-white p-5 shadow-[0_1px_14px_rgba(13,24,21,0.04)]">
-              <div className="grid gap-6 sm:grid-cols-3 sm:gap-0">
+              <div className="grid gap-6 sm:grid-cols-2 sm:gap-0">
                 <div className="sm:border-r sm:border-border/60 sm:pr-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">In pools</p>
                   <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground">
@@ -196,7 +177,7 @@ export function PortfolioContent() {
                   </p>
                   <p className="mt-1 text-xs text-muted">Current balance</p>
                 </div>
-                <div className="sm:border-r sm:border-border/60 sm:px-5">
+                {/* <div className="sm:border-r sm:border-border/60 sm:px-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
                     Deposited
                   </p>
@@ -204,7 +185,7 @@ export function PortfolioContent() {
                     {formatUsd(summary?.totalDepositedFromAppUsd ?? 0)}
                   </p>
                   <p className="mt-1 text-xs text-muted">In-app deposits</p>
-                </div>
+                </div> */}
                 <div className="sm:pl-5">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">Est. earned</p>
                   <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-[#15803d]">
@@ -212,7 +193,7 @@ export function PortfolioContent() {
                       ? formatUsdEarned(summary.estimatedEarnedUsd)
                       : "—"}
                   </p>
-                  <p className="mt-1 text-xs text-muted">While in Kudi</p>
+                  <p className="mt-1 text-xs text-muted">~1 day at APY</p>
                 </div>
               </div>
             </div>
@@ -226,41 +207,51 @@ export function PortfolioContent() {
 
           {projection && totalValue > 0 ? (
             <section className="mt-6 overflow-hidden rounded-2xl border border-border/80 bg-white shadow-[0_1px_14px_rgba(13,24,21,0.04)]">
-              <div className="border-b border-border/60 bg-gradient-to-b from-primary-muted/35 to-transparent px-5 py-4">
-                <div className="flex gap-3">
-                  <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-[0_1px_8px_rgba(13,24,21,0.06)] ring-1 ring-primary/15">
-                    <TrendingUp className="size-5" strokeWidth={2} aria-hidden />
+              <button
+                type="button"
+                onClick={() => setIllustrativeGrowthOpen((o) => !o)}
+                aria-expanded={illustrativeGrowthOpen}
+                className={`flex w-full items-start gap-3 bg-gradient-to-b from-primary-muted/35 to-transparent px-5 py-4 text-left transition-colors hover:bg-primary-muted/25 active:bg-primary-muted/30 ${illustrativeGrowthOpen ? "border-b border-border/60" : ""}`}
+              >
+                <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-white text-primary shadow-[0_1px_8px_rgba(13,24,21,0.06)] ring-1 ring-primary/15">
+                  <TrendingUp className="size-5" strokeWidth={2} aria-hidden />
+                </div>
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <h2 className="text-base font-semibold tracking-tight text-foreground">Illustrative growth</h2>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted">
+                    If today&apos;s blended rate held, compound growth on your pool balance
+                    {weightedApy != null ? ` (~${weightedApy.toFixed(2)}% APY)` : " (~4% placeholder)"}. Not a
+                    forecast.
+                  </p>
+                </div>
+                <ChevronDown
+                  className={`mt-2 size-5 shrink-0 text-muted transition-transform duration-200 ${illustrativeGrowthOpen ? "rotate-180" : ""}`}
+                  strokeWidth={2}
+                  aria-hidden
+                />
+              </button>
+              {illustrativeGrowthOpen ? (
+                <div className="grid gap-3 p-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-border/60 bg-neutral-50/90 px-4 py-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">1 year</p>
+                    <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-foreground">
+                      {formatCurrencyFull(projection.y1.balance)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-[#15803d]">
+                      +{formatCurrency(projection.y1.totalEarned)} est. yield
+                    </p>
                   </div>
-                  <div className="min-w-0 pt-0.5">
-                    <h2 className="text-base font-semibold tracking-tight text-foreground">Illustrative growth</h2>
-                    <p className="mt-0.5 text-xs leading-relaxed text-muted">
-                      If today&apos;s blended rate held, compound growth on your pool balance
-                      {weightedApy != null ? ` (~${weightedApy.toFixed(2)}% APY)` : " (~4% placeholder)"}. Not a
-                      forecast.
+                  <div className="rounded-xl border border-border/60 bg-neutral-50/90 px-4 py-3.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">5 years</p>
+                    <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-foreground">
+                      {formatCurrencyFull(projection.y5.balance)}
+                    </p>
+                    <p className="mt-1 text-xs font-medium text-[#15803d]">
+                      +{formatCurrency(projection.y5.totalEarned)} est. yield
                     </p>
                   </div>
                 </div>
-              </div>
-              <div className="grid gap-3 p-4 sm:grid-cols-2">
-                <div className="rounded-xl border border-border/60 bg-neutral-50/90 px-4 py-3.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">1 year</p>
-                  <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-foreground">
-                    {formatCurrencyFull(projection.y1.balance)}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-[#15803d]">
-                    +{formatCurrency(projection.y1.totalEarned)} est. yield
-                  </p>
-                </div>
-                <div className="rounded-xl border border-border/60 bg-neutral-50/90 px-4 py-3.5">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">5 years</p>
-                  <p className="mt-1.5 text-xl font-bold tabular-nums tracking-tight text-foreground">
-                    {formatCurrencyFull(projection.y5.balance)}
-                  </p>
-                  <p className="mt-1 text-xs font-medium text-[#15803d]">
-                    +{formatCurrency(projection.y5.totalEarned)} est. yield
-                  </p>
-                </div>
-              </div>
+              ) : null}
             </section>
           ) : null}
 
@@ -362,10 +353,13 @@ export function PortfolioContent() {
                       <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                         <div className="rounded-xl bg-neutral-50 px-3 py-2">
                           <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                            Deposited (app)
+                            Net from app
                           </p>
                           <p className="mt-0.5 font-semibold tabular-nums text-foreground">
                             {row.depositedFromAppUsd != null ? formatUsd(row.depositedFromAppUsd) : "—"}
+                          </p>
+                          <p className="mt-1 text-[10px] leading-snug text-muted">
+                            Deposits minus Kudi withdrawals
                           </p>
                         </div>
                         <div className="rounded-xl bg-neutral-50 px-3 py-2">
@@ -377,6 +371,7 @@ export function PortfolioContent() {
                               ? formatUsdEarned(row.estimatedEarnedUsd)
                               : "—"}
                           </p>
+                          <p className="mt-1 text-[10px] leading-snug text-muted">Balance x APY / 365</p>
                         </div>
                       </div>
 

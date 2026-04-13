@@ -16,6 +16,7 @@ enum WalletActivityType {
   VAULT_INVEST
   VAULT_WITHDRAW
   USDC_WITHDRAW
+  PAYCREST_OFFRAMP
   GAS_SUBSIDY
 }
 
@@ -30,7 +31,8 @@ model User {
   createdAt          DateTime               @default(now())
   wallet             Wallet?
   activities         WalletActivity[]
-  paycrestOnrampOrders PaycrestOnrampOrder[]
+  paycrestOnrampOrders  PaycrestOnrampOrder[]
+  paycrestOfframpOrders PaycrestOfframpOrder[]
 }
 
 /// Fiat → USDC (Base) orders created via Paycrest sender API.
@@ -45,6 +47,27 @@ model PaycrestOnrampOrder {
   amountFiat       String
   rate             String?
   providerAccount  Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+/// USDC (Base) → fiat (e.g. NGN) via Paycrest sender API; custodial transfer to Paycrest deposit address.
+model PaycrestOfframpOrder {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paycrestOrderId  String   @unique
+  reference        String   @unique
+  status           String   @default("PENDING")
+  /// Human USDC amount for the order (decimals as sent to Paycrest).
+  amountUsdc       String
+  fiatCurrency     String   @default("NGN")
+  rate             String?
+  ngnEstimate      String?
+  providerAccount  Json?
+  depositTxHash    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 

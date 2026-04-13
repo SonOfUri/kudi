@@ -1490,10 +1490,9 @@ export const BANK_TRANSFER_DIRECTORY: readonly BankTransferDirectoryRow[] = [
   },
 ] as const;
 
-/** ISO 3166-1 alpha-2 → supported fiat when it matches `row.currency`. */
+/** ISO 3166-1 alpha-2 → supported fiat when it matches `row.currency` (NGN bank transfer only). */
 export const BANK_TRANSFER_ENABLED_ISO2_TO_FIAT = {
   NG: "NGN",
-  KE: "KES",
 } as const;
 
 export type BankTransferEnabledFiat =

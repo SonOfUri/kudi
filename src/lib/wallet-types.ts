@@ -17,7 +17,9 @@ export type PortfolioApiRow = {
     balanceNative?: string;
   };
   vault: PortfolioVault | null;
+  /** Gross in-app deposits into this vault minus recorded Kudi vault withdrawals (USDC), min 0. */
   depositedFromAppUsd: number | null;
+  /** Illustrative ~1-day accrual: balance x (APY / 365). */
   estimatedEarnedUsd: number | null;
   appDepositAttribution?: boolean;
 };

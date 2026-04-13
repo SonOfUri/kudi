@@ -50,6 +50,21 @@ function metaProtocolName(meta: unknown): string | undefined {
   return typeof v === "string" && v.trim().length > 0 ? v.trim() : undefined;
 }
 
+/** Est. earned = illustrative daily accrual (balance x APY / 365); 6 dp in JSON. */
+function roundIllustrativeDailyEarnUsd(n: number): number {
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.round(n * 1_000_000) / 1_000_000;
+}
+
+function illustrativeDailyEarnUsd(
+  principalUsd: number,
+  apyPercent: number | null | undefined,
+): number | null {
+  if (!Number.isFinite(principalUsd) || principalUsd <= 0) return null;
+  if (apyPercent == null || !Number.isFinite(apyPercent) || apyPercent <= 0) return null;
+  return roundIllustrativeDailyEarnUsd(principalUsd * (apyPercent / 100 / 365));
+}
+
 function buildVaultByAddress(vaults: unknown[]): Map<string, MinimalEarnVault> {
   const m = new Map<string, MinimalEarnVault>();
   for (const v of vaults) {
@@ -59,6 +74,32 @@ function buildVaultByAddress(vaults: unknown[]): Map<string, MinimalEarnVault> {
     m.set(vo.address.toLowerCase(), vo);
   }
   return m;
+}
+
+/** In-app principal for this vault: gross VAULT_INVEST minus VAULT_WITHDRAW (USDC from quote), floored at 0. */
+function netDepositedFromAppUsd(
+  vaultAddr: string | null | undefined,
+  depositedByVault: Map<string, number>,
+  withdrawnByVault: Map<string, number>,
+): number | null {
+  if (vaultAddr == null) return null;
+  const k = vaultAddr.toLowerCase();
+  const gross = depositedByVault.get(k) ?? 0;
+  const withdrawn = withdrawnByVault.get(k) ?? 0;
+  if (gross === 0 && withdrawn === 0) return null;
+  return Math.max(0, gross - withdrawn);
+}
+
+function totalNetDepositedFromAppUsd(
+  depositedByVault: Map<string, number>,
+  withdrawnByVault: Map<string, number>,
+): number {
+  let sum = 0;
+  for (const [va, gross] of depositedByVault) {
+    const withdrawn = withdrawnByVault.get(va) ?? 0;
+    sum += Math.max(0, gross - withdrawn);
+  }
+  return sum;
 }
 
 /**
@@ -113,7 +154,6 @@ export async function GET() {
     const protocolNameByVault = new Map<string, string>();
     const investedVaultAddresses: string[] = [];
     const seenInvestVault = new Set<string>();
-    let totalDepositedFromAppUsd = 0;
     for (const row of depositRows) {
       if (row.amountUsdcBaseUnits) {
         let usd = 0;
@@ -123,7 +163,6 @@ export async function GET() {
           usd = 0;
         }
         if (usd > 0) {
-          totalDepositedFromAppUsd += usd;
           const va = metaVaultAddress(row.meta);
           if (va) {
             depositedByVault.set(va, (depositedByVault.get(va) ?? 0) + usd);
@@ -146,6 +185,28 @@ export async function GET() {
         }
       }
     }
+
+    const withdrawRows = await db.walletActivity.findMany({
+      where: { userId: user.id, type: WalletActivityType.VAULT_WITHDRAW },
+      select: { amountUsdcBaseUnits: true, meta: true },
+    });
+
+    const withdrawnByVault = new Map<string, number>();
+    for (const row of withdrawRows) {
+      const va = metaVaultAddress(row.meta);
+      if (!va || !row.amountUsdcBaseUnits) continue;
+      let usd = 0;
+      try {
+        usd = Number(formatUnits(BigInt(row.amountUsdcBaseUnits), 6));
+      } catch {
+        usd = 0;
+      }
+      if (usd > 0) {
+        withdrawnByVault.set(va, (withdrawnByVault.get(va) ?? 0) + usd);
+      }
+    }
+
+    const totalDepositedFromAppUsd = totalNetDepositedFromAppUsd(depositedByVault, withdrawnByVault);
 
     let vaultsPayload: unknown[] = [];
     try {
@@ -190,12 +251,8 @@ export async function GET() {
       const currentUsd = positionUsd(pos);
       const match = vaultMatches[i];
       const vaultAddr = match?.vaultAddress?.toLowerCase();
-      const depositedUsd =
-        vaultAddr != null ? (depositedByVault.get(vaultAddr) ?? null) : null;
-      const estimatedEarnedUsd =
-        depositedUsd != null && depositedUsd > 0
-          ? Math.max(0, currentUsd - depositedUsd)
-          : null;
+      const depositedUsd = netDepositedFromAppUsd(vaultAddr, depositedByVault, withdrawnByVault);
+      const estimatedEarnedUsd = illustrativeDailyEarnUsd(currentUsd, match?.apyTotal);
 
       return {
         position: pos,
@@ -212,11 +269,8 @@ export async function GET() {
       const currentUsd = positionUsd(extra.position);
       const match = extra.vault;
       const vaultAddr = match.vaultAddress.toLowerCase();
-      const depositedUsd = depositedByVault.get(vaultAddr) ?? null;
-      const estimatedEarnedUsd =
-        depositedUsd != null && depositedUsd > 0
-          ? Math.max(0, currentUsd - depositedUsd)
-          : null;
+      const depositedUsd = netDepositedFromAppUsd(vaultAddr, depositedByVault, withdrawnByVault);
+      const estimatedEarnedUsd = illustrativeDailyEarnUsd(currentUsd, match.apyTotal);
       positions.push({
         position: extra.position,
         vault: match,
@@ -231,10 +285,18 @@ export async function GET() {
       totalValueOut += positionUsd(extra.position);
     }
 
-    const estimatedEarnedAggregateUsd =
-      totalDepositedFromAppUsd > 0
-        ? Math.max(0, totalValueOut - Math.min(totalDepositedFromAppUsd, totalValueOut))
-        : null;
+    let estimatedEarnedSum = 0;
+    let hasEarned = false;
+    for (const row of positions) {
+      const v = row.estimatedEarnedUsd;
+      if (v != null && v > 0) {
+        estimatedEarnedSum += v;
+        hasEarned = true;
+      }
+    }
+    const estimatedEarnedAggregateUsd = hasEarned
+      ? roundIllustrativeDailyEarnUsd(estimatedEarnedSum)
+      : null;
 
     return NextResponse.json({
       address: wallet.address,
@@ -245,7 +307,7 @@ export async function GET() {
         totalDepositedFromAppUsd,
         estimatedEarnedUsd: estimatedEarnedAggregateUsd,
         earnNote:
-          "Earned is estimated from deposits made in Kudi vs. current balance. It excludes funds added outside the app and is not tax advice.",
+          "Est. earned is an illustrative ~1-day amount: current balance x (APY / 365), simple daily slice. Not realized yield; APYs and balances change.",
       },
     });
   } catch (err) {

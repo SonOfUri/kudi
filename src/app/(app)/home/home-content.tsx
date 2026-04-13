@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { AddFundsSheet } from "@/components/add-funds-sheet";
 import { CashOutSheet } from "@/components/cash-out-sheet";
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
 import { ProjectionChartSkeleton } from "@/components/projection-chart-skeleton";
 import { hasSeePossibleModalDismissed, SeePossibleModal } from "@/components/see-possible-modal";
 import { formatCurrency, formatCurrencyFull } from "@/lib/compound-calculator";
@@ -161,8 +162,7 @@ export function HomeContent({
   const yieldPools = useMemo(() => poolsFromPortfolioRows(portfolioRows), [portfolioRows]);
 
   const growthModelPools = useMemo<PoolSlice[]>(
-    () =>
-      yieldPools.length > 0 ? yieldPools : [{ principal: 1, apyPercent: 0 }],
+    () => (yieldPools.length > 0 ? yieldPools : []),
     [yieldPools],
   );
 
@@ -181,10 +181,12 @@ export function HomeContent({
     return m > 0 ? m : 1;
   }, [growthYearly]);
 
-  const growthYTicks = useMemo(
-    () => [0, 0.2, 0.4, 0.6, 0.8, 1.0].map((pct) => maxGrowthBalance * pct),
-    [maxGrowthBalance],
-  );
+  const growthYTicks = useMemo(() => {
+    if (yieldPools.length === 0) {
+      return [0, 0, 0, 0, 0, 0];
+    }
+    return [0, 0.2, 0.4, 0.6, 0.8, 1.0].map((pct) => maxGrowthBalance * pct);
+  }, [yieldPools.length, maxGrowthBalance]);
 
   const growthTooltipPoint = useMemo(
     () =>
@@ -535,15 +537,20 @@ export function HomeContent({
             aria-label="Close"
             onClick={() => setGrowthInfoOpen(false)}
           />
-          <div className="relative z-10 flex w-full max-w-[min(100%,var(--app-max-width))] flex-col items-center rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-12 text-center shadow-xl">
-            <button
-              type="button"
-              onClick={() => setGrowthInfoOpen(false)}
-              className="absolute right-4 top-4 flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-foreground active:bg-neutral-200"
-              aria-label="Close"
-            >
-              <X className="size-5 shrink-0" strokeWidth={2} aria-hidden />
-            </button>
+          <div className="relative z-10 flex w-full max-w-[min(100%,var(--app-max-width))] flex-col items-center rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 text-center shadow-xl">
+            <div className="flex w-full justify-center pt-[max(0.5rem,env(safe-area-inset-top))] pb-1">
+              <MobileSheetNotch />
+            </div>
+            <div className="flex w-full justify-end">
+              <button
+                type="button"
+                onClick={() => setGrowthInfoOpen(false)}
+                className="flex size-9 shrink-0 items-center justify-center rounded-full bg-neutral-100 text-foreground active:bg-neutral-200"
+                aria-label="Close"
+              >
+                <X className="size-5 shrink-0" strokeWidth={2} aria-hidden />
+              </button>
+            </div>
 
             {growthInfoSummary ? (
               growthInfoSummary.hasRates ? (

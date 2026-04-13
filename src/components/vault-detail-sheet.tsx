@@ -4,8 +4,9 @@ import { ExternalLink, TrendingUp, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
-import { KUDI_CHAIN } from "@/lib/kudi-chain";
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
 import { ProtocolLogo } from "@/components/protocol-logo";
+import { KUDI_CHAIN } from "@/lib/kudi-chain";
 import { SimulationInputModal } from "@/components/simulation-input-modal";
 import { SimulationResults } from "@/components/simulation-results";
 import { VaultInvestModal } from "@/components/vault-invest-modal";
@@ -114,8 +115,10 @@ export function VaultDetailSheet({ vault, open, onClose }: VaultDetailProps) {
         aria-label="Close"
         onClick={onClose}
       />
-      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5 shadow-xl">
-        <div className="mx-auto h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden />
+      <div className="relative z-10 flex max-h-[85dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 shadow-xl">
+        <div className="flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
 
         <div className="mt-4 flex items-start justify-between gap-4">
           <p className="text-xs text-muted">

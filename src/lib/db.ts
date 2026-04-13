@@ -29,7 +29,10 @@ function createPrismaClient() {
  * which surfaces as `undefined.create`. Recreate when codegen and client disagree.
  */
 function clientMatchesCodegen(client: PrismaClient): boolean {
-  return typeof client.paycrestOnrampOrder !== "undefined";
+  return (
+    typeof client.paycrestOnrampOrder !== "undefined" &&
+    typeof client.paycrestOfframpOrder !== "undefined"
+  );
 }
 
 function getPrisma(): PrismaClient {

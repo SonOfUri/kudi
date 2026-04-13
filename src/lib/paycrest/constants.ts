@@ -1,5 +1,5 @@
-/** Fiat corridors supported for Paycrest on-ramp → USDC on Base. */
-export const PAYCREST_FIAT_CODES = ["NGN", "KES"] as const;
+/** Fiat corridors supported for Paycrest on-ramp → USDC on Base (Nigerian naira only). */
+export const PAYCREST_FIAT_CODES = ["NGN"] as const;
 
 export type PaycrestFiatCode = (typeof PAYCREST_FIAT_CODES)[number];
 

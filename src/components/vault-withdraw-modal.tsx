@@ -1,9 +1,11 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { formatUnits } from "ethers";
 import { AlertCircle, ArrowUpRight, CheckCircle2, Info, Loader2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { MobileSheetNotch } from "@/components/mobile-bottom-sheet";
 import { KUDI_CHAIN } from "@/lib/kudi-chain";
 import { walletKeys } from "@/lib/wallet-query-keys";
 
@@ -46,6 +48,22 @@ function formatUsd(amount: number) {
   }).format(amount);
 }
 
+function formatUsdcFromBaseUnits6(base: string): string | null {
+  if (!/^[0-9]+$/.test(base)) return null;
+  try {
+    const n = Number.parseFloat(formatUnits(BigInt(base), 6));
+    if (!Number.isFinite(n) || n < 0) return null;
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6,
+    }).format(n);
+  } catch {
+    return null;
+  }
+}
+
 export function VaultWithdrawModal({
   open,
   onClose,
@@ -65,6 +83,9 @@ export function VaultWithdrawModal({
   const [error, setError] = useState<string | null>(null);
   const [explorerUrl, setExplorerUrl] = useState<string | null>(null);
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+  /** Display string for success screen: quoted USDC from API, or approximate from position estimate. */
+  const [successReceiveLabel, setSuccessReceiveLabel] = useState<string | null>(null);
+  const [successAmountIsApprox, setSuccessAmountIsApprox] = useState(false);
 
   const loadBalance = useCallback(async () => {
     setLoadingBal(true);
@@ -95,6 +116,8 @@ export function VaultWithdrawModal({
       setError(null);
       setExplorerUrl(null);
       setWithdrawSuccess(false);
+      setSuccessReceiveLabel(null);
+      setSuccessAmountIsApprox(false);
       return;
     }
     if (initialShareBalance && /^[1-9][0-9]*$/.test(initialShareBalance)) {
@@ -142,7 +165,14 @@ export function VaultWithdrawModal({
     setError(null);
     setExplorerUrl(null);
     setWithdrawSuccess(false);
+    setSuccessReceiveLabel(null);
+    setSuccessAmountIsApprox(false);
     try {
+      const fallbackReceiveUsdcBaseUnits =
+        estimatedReceiveUsd != null && Number.isFinite(estimatedReceiveUsd) && estimatedReceiveUsd > 0
+          ? Math.max(1, Math.round(estimatedReceiveUsd * 1e6)).toString()
+          : undefined;
+
       const res = await fetch("/api/lifi/withdraw", {
         method: "POST",
         credentials: "include",
@@ -151,6 +181,7 @@ export function VaultWithdrawModal({
           vaultAddress,
           fromAmount,
           vaultLabel: poolName?.trim() || undefined,
+          ...(fallbackReceiveUsdcBaseUnits ? { fallbackReceiveUsdcBaseUnits } : {}),
         }),
       });
       const text = await res.text();
@@ -180,6 +211,22 @@ export function VaultWithdrawModal({
           ? (data as { explorerUrl: string }).explorerUrl
           : null;
       setExplorerUrl(url);
+
+      let receiveLabel: string | null = null;
+      let approx = false;
+      if (typeof data === "object" && data !== null && "amountUsdcBaseUnits" in data) {
+        const raw = (data as { amountUsdcBaseUnits?: unknown }).amountUsdcBaseUnits;
+        if (typeof raw === "string") {
+          receiveLabel = formatUsdcFromBaseUnits6(raw);
+        }
+      }
+      if (!receiveLabel && estimatedReceiveUsd != null && Number.isFinite(estimatedReceiveUsd)) {
+        receiveLabel = formatUsd(estimatedReceiveUsd);
+        approx = true;
+      }
+      setSuccessReceiveLabel(receiveLabel);
+      setSuccessAmountIsApprox(approx);
+
       setWithdrawSuccess(true);
       void queryClient.invalidateQueries({ queryKey: walletKeys.all });
       onSuccess?.();
@@ -213,8 +260,10 @@ export function VaultWithdrawModal({
         aria-label="Close"
         onClick={closeAll}
       />
-      <div className="relative z-10 flex max-h-[90dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-3 shadow-xl">
-        <div className="mx-auto mb-2 h-1 w-10 shrink-0 rounded-full bg-neutral-200" aria-hidden />
+      <div className="relative z-10 flex max-h-[90dvh] w-full max-w-[min(100%,var(--app-max-width))] flex-col overflow-y-auto rounded-t-3xl border border-border border-b-0 bg-white px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-0 shadow-xl">
+        <div className="flex justify-center pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
 
         {showSuccess ? (
           <>
@@ -235,6 +284,22 @@ export function VaultWithdrawModal({
               <h2 id="vault-withdraw-success-title" className="mt-4 text-xl font-bold text-foreground">
                 Withdrawal submitted
               </h2>
+              {successReceiveLabel ? (
+                <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-foreground">
+                  {successAmountIsApprox ? (
+                    <span className="font-bold text-muted" aria-hidden>
+                      ~{" "}
+                    </span>
+                  ) : null}
+                  {successReceiveLabel}{" "}
+                  <span className="text-lg font-semibold text-muted">{symLabel}</span>
+                </p>
+              ) : null}
+              {successAmountIsApprox ? (
+                <p className="mt-1 max-w-sm text-xs text-muted">
+                  Estimated from your position; the confirmed amount may differ slightly.
+                </p>
+              ) : null}
               <p className="mt-2 max-w-sm text-sm leading-relaxed text-muted">
                 {symLabel} will land in your Kudi wallet on {KUDI_CHAIN.name} after the network confirms the
                 transaction. Pull to refresh on Home if your balance doesn&apos;t update right away.

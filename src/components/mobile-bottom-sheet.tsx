@@ -4,6 +4,16 @@ import { X } from "lucide-react";
 import { useEffect, useId, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+/** Centered drag handle — use at the top of mobile sheets and bottom modals. */
+export function MobileSheetNotch({ className }: { className?: string }) {
+  return (
+    <div
+      className={`mx-auto h-1 w-10 shrink-0 rounded-full bg-neutral-200${className ? ` ${className}` : ""}`}
+      aria-hidden
+    />
+  );
+}
+
 export type MobileBottomSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -65,8 +75,11 @@ export function MobileBottomSheet({
         aria-labelledby={title ? titleId : undefined}
         className="animate-kudi-sheet-up relative z-10 max-h-[min(92dvh,840px)] w-[min(100%,var(--app-max-width))] overflow-y-auto overscroll-contain rounded-t-3xl bg-white shadow-[0_-4px_24px_rgba(0,0,0,0.08)]"
       >
+        <div className="flex justify-center px-5 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+          <MobileSheetNotch />
+        </div>
         {title || showClose ? (
-          <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-neutral-100 bg-white px-5 pb-3 pt-4">
+          <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-neutral-100 bg-white px-5 pb-3 pt-2">
             {title ? (
               <h2 id={titleId} className="min-w-0 flex-1 text-lg font-bold leading-snug text-[#16211F]">
                 {title}

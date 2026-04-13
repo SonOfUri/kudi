@@ -9,7 +9,7 @@ import {
   KUDI_QUOTE_FROM_TOKEN,
 } from "@/lib/lifi/constants";
 import { sendComposerTransaction } from "@/lib/lifi/execute-deposit";
-import { fetchComposerQuote } from "@/lib/lifi/server";
+import { fetchComposerQuote, type LiFiQuoteResponse } from "@/lib/lifi/server";
 import { getCustodialSigner } from "@/lib/custodial-signer";
 import { userFacingTransactionError } from "@/lib/chain-errors";
 import { ensureUserWallet } from "@/lib/wallet-provision";
@@ -21,22 +21,56 @@ const bodySchema = z.object({
   /** Vault share amount in smallest units (integer string). */
   fromAmount: z.string().regex(/^[1-9][0-9]*$/),
   vaultLabel: z.string().max(240).optional(),
+  /**
+   * Optional USDC base units (6 dp) from the client’s USD estimate when the Li.Fi quote omits
+   * a parseable `toAmount` (used only if the quote parser returns null).
+   */
+  fallbackReceiveUsdcBaseUnits: z.string().regex(/^[1-9][0-9]*$/).optional(),
 });
 
-function quoteToUsdcBaseUnits(quote: {
-  action?: { toToken?: { decimals?: number }; toAmount?: string };
-}): string | null {
-  const decimals = quote.action?.toToken?.decimals;
-  const amt = quote.action?.toAmount;
-  if (typeof decimals !== "number" || !Number.isFinite(decimals) || decimals < 0 || decimals > 36) {
-    return null;
+function uintString(v: unknown): string | null {
+  if (typeof v !== "string" || !/^[0-9]+$/.test(v)) return null;
+  return v;
+}
+
+/**
+ * USDC-out from Composer quote: tries `action.toAmount`, then `estimate.toAmount` / `toAmountMin`.
+ * Vault exits are quoted to Base USDC; we default output decimals to 6 when Li.Fi omits `toToken.decimals`.
+ */
+function quoteOutputToUsdcBaseUnits(quote: LiFiQuoteResponse): string | null {
+  const usdcAddr = KUDI_QUOTE_FROM_TOKEN.toLowerCase();
+  const actionTo = quote.action?.toToken;
+  const estTo =
+    quote.estimate && typeof quote.estimate === "object"
+      ? (quote.estimate as { toToken?: { decimals?: number; address?: string } }).toToken
+      : undefined;
+
+  let outDecimals: number | null = null;
+  if (typeof actionTo?.decimals === "number" && Number.isFinite(actionTo.decimals)) {
+    outDecimals = actionTo.decimals;
+  } else if (typeof estTo?.decimals === "number" && Number.isFinite(estTo.decimals)) {
+    outDecimals = estTo.decimals;
+  } else {
+    const addr =
+      (typeof actionTo?.address === "string" && actionTo.address.toLowerCase()) ||
+      (typeof estTo?.address === "string" && estTo.address.toLowerCase()) ||
+      "";
+    if (addr === usdcAddr) outDecimals = 6;
   }
-  if (typeof amt !== "string" || !/^[0-9]+$/.test(amt)) {
-    return null;
+  if (outDecimals == null) {
+    outDecimals = 6;
   }
-  if (decimals === 6) return amt;
+  if (outDecimals < 0 || outDecimals > 36) return null;
+
+  const raw =
+    uintString(quote.action?.toAmount) ??
+    uintString(quote.estimate?.toAmount) ??
+    uintString(quote.estimate?.toAmountMin);
+  if (!raw) return null;
+
+  if (outDecimals === 6) return raw;
   try {
-    const asDecimal = formatUnits(BigInt(amt), decimals);
+    const asDecimal = formatUnits(BigInt(raw), outDecimals);
     return parseUnits(asDecimal, 6).toString();
   } catch {
     return null;
@@ -67,7 +101,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { vaultAddress, fromAmount, vaultLabel } = parsed.data;
+  const { vaultAddress, fromAmount, vaultLabel, fallbackReceiveUsdcBaseUnits } = parsed.data;
   const chainId = KUDI_DEFAULT_CHAIN_ID;
   const chain = String(chainId);
 
@@ -88,7 +122,8 @@ export async function POST(req: Request) {
     const signer = await getCustodialSigner(user.id, chainId);
     const { hash } = await sendComposerTransaction(signer, quote);
 
-    const amountUsdcBaseUnits = quoteToUsdcBaseUnits(quote);
+    const amountUsdcBaseUnits =
+      quoteOutputToUsdcBaseUnits(quote) ?? fallbackReceiveUsdcBaseUnits ?? null;
 
     await recordWalletActivity({
       userId: user.id,
@@ -107,6 +142,8 @@ export async function POST(req: Request) {
       txHash: hash,
       explorerUrl: baseExplorerTx(hash),
       chainId,
+      /** USDC received (6 decimals), from the quote or client fallback — for success UI and activity parity. */
+      ...(amountUsdcBaseUnits ? { amountUsdcBaseUnits } : {}),
     });
   } catch (err) {
     console.error("[api/lifi/withdraw]", err);

@@ -123,6 +123,23 @@ export async function GET(req: Request) {
           amountLabel = "USDC";
         }
       }
+    } else if (row.type === "PAYCREST_OFFRAMP") {
+      title = "Bank cash-out (NGN)";
+      if (meta && typeof meta === "object" && "paycrestOrderId" in meta) {
+        const id = (meta as { paycrestOrderId: unknown }).paycrestOrderId;
+        detail = typeof id === "string" && id.trim() ? `Order ${id.trim()}` : "Bank transfer";
+      } else {
+        detail = "USDC → bank";
+      }
+      tone = "out";
+      if (row.amountUsdcBaseUnits) {
+        try {
+          const usd = formatUnits(BigInt(row.amountUsdcBaseUnits), 6);
+          amountLabel = `−$${Number(usd).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
+        } catch {
+          amountLabel = "USDC";
+        }
+      }
     } else if (row.type === "GAS_SUBSIDY") {
       title = "Network fee support";
       detail = "ETH added for transactions on Base";

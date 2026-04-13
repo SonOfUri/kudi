@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   if (!isPaycrestOnrampConfigured()) {
     return NextResponse.json(
-      { error: "On-ramp is not configured.", code: "PAYCREST_DISABLED", items: [] },
+      { error: "Bank transfers are not available right now.", code: "FIAT_TRANSFER_DISABLED", items: [] },
       { status: 503 },
     );
   }
@@ -33,7 +33,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ currency, items });
   } catch (e) {
     console.error("[api/paycrest/institutions]", e);
-    const message = e instanceof Error ? e.message : "Institutions request failed";
-    return NextResponse.json({ error: message, items: [] }, { status: 502 });
+    return NextResponse.json(
+      { error: "Could not load banks right now. Try again in a moment.", items: [] },
+      { status: 502 },
+    );
   }
 }

@@ -367,7 +367,7 @@ export function MarketsYieldList() {
               <li key={`${v.chainId}-${v.address}`}>
                 <div
                   onClick={() => setSelectedVault(v)}
-                  className="flex w-full cursor-pointer items-center gap-3  bg-white px-4 py-3 text-left transition-shadow hover:shadow-md active:scale-[0.99]"
+                  className="flex w-full cursor-pointer items-center gap-3  bg-white px-4 py-3 text-left transition-shadow active:scale-[0.99]"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {

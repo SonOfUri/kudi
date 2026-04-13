@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
   if (!isPaycrestOnrampConfigured()) {
     return NextResponse.json(
-      { error: "On-ramp is not configured.", code: "PAYCREST_DISABLED" },
+      { error: "Bank transfers are not available right now.", code: "FIAT_TRANSFER_DISABLED" },
       { status: 503 },
     );
   }
@@ -150,7 +150,9 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     console.error("[api/paycrest/onramp]", e);
-    const message = e instanceof Error ? e.message : "Order creation failed";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json(
+      { error: "We could not start your bank transfer. Please try again." },
+      { status: 502 },
+    );
   }
 }

@@ -25,7 +25,7 @@ import {
 import { KUDI_CHAIN } from "@/lib/kudi-chain";
 import { estimatedUsdcNumber, MAX_ONRAMP_USDC, MIN_ONRAMP_USDC } from "@/lib/paycrest/client";
 
-/** UI metadata + demo fallback when Paycrest env is not configured. */
+/** UI metadata + demo fallback when Paycrest env is not configured (NGN only). */
 const BANK_TRANSFER_FIATS = {
   NGN: {
     flag: "/flags/ng.svg",
@@ -37,66 +37,6 @@ const BANK_TRANSFER_FIATS = {
       bankName: "Providus Bank",
       accountNumber: "8800123456789",
       accountName: "KUDI VIRTUAL COLLECTION",
-    },
-  },
-  KES: {
-    flag: "/flags/ke.svg",
-    label: "Kenyan shilling",
-    country: "Kenya",
-    symbol: "KSh",
-    locale: "en-KE",
-    fallback: {
-      bankName: "Co-operative Bank of Kenya",
-      accountNumber: "0112345678901",
-      accountName: "KUDI COLLECTIONS KES",
-    },
-  },
-  UGX: {
-    flag: "/flags/ug.svg",
-    label: "Ugandan shilling",
-    country: "Uganda",
-    symbol: "USh",
-    locale: "en-UG",
-    fallback: {
-      bankName: "Centenary Bank",
-      accountNumber: "3204768890123",
-      accountName: "KUDI COLLECTIONS UGX",
-    },
-  },
-  TZS: {
-    flag: "/flags/tz.svg",
-    label: "Tanzanian shilling",
-    country: "Tanzania",
-    symbol: "TSh",
-    locale: "en-TZ",
-    fallback: {
-      bankName: "CRDB Bank",
-      accountNumber: "0151234567890",
-      accountName: "KUDI COLLECTIONS TZS",
-    },
-  },
-  MWK: {
-    flag: "/flags/mw.svg",
-    label: "Malawian kwacha",
-    country: "Malawi",
-    symbol: "MK",
-    locale: "en-MW",
-    fallback: {
-      bankName: "National Bank of Malawi",
-      accountNumber: "1001234567890",
-      accountName: "KUDI COLLECTIONS MWK",
-    },
-  },
-  BRL: {
-    flag: "/flags/br.svg",
-    label: "Brazilian real",
-    country: "Brazil",
-    symbol: "R$",
-    locale: "pt-BR",
-    fallback: {
-      bankName: "Banco do Brasil",
-      accountNumber: "12345-6 / 0001-9",
-      accountName: "KUDI PAGAMENTOS LTDA",
     },
   },
 } as const;
@@ -148,27 +88,18 @@ function formatFiatAmount(code: FiatCurrency, amount: number): string {
   if (!Number.isFinite(amount)) return "—";
   const { locale } = BANK_TRANSFER_FIATS[code];
   try {
-    return amount.toLocaleString(locale, { maximumFractionDigits: code === "BRL" ? 2 : 0 });
+    return amount.toLocaleString(locale, { maximumFractionDigits: 0 });
   } catch {
-    return amount.toLocaleString("en-US", { maximumFractionDigits: code === "BRL" ? 2 : 0 });
+    return amount.toLocaleString("en-US", { maximumFractionDigits: 0 });
   }
 }
 
-function sanitizeFiatAmountInput(raw: string, code: FiatCurrency): string {
-  if (code === "BRL") {
-    const digits = raw.replace(/[^\d.]/g, "");
-    const i = digits.indexOf(".");
-    if (i === -1) return digits;
-    return `${digits.slice(0, i + 1)}${digits.slice(i + 1).replace(/\./g, "").slice(0, 2)}`;
-  }
+function sanitizeFiatAmountInput(raw: string, _code: FiatCurrency): string {
   return raw.replace(/[^\d]/g, "");
 }
 
 /** Amount string for Paycrest rate + create order. */
-function formatAmountForPaycrest(num: number, fiat: FiatCurrency): string {
-  if (fiat === "BRL") {
-    return num.toFixed(2);
-  }
+function formatAmountForPaycrest(num: number, _fiat: FiatCurrency): string {
   return String(Math.floor(num));
 }
 
@@ -1220,14 +1151,14 @@ export function AddFundsSheet({
                     </p>
                   )}
                   <div className="border-t border-border/70 pt-2.5">
-                    <p className="text-[11px] font-semibold text-muted">Paycrest reference rate</p>
+                    <p className="text-[11px] font-semibold text-muted">Reference rate</p>
                     <p className="mt-0.5 font-mono text-sm font-medium text-foreground">{rateQuote}</p>
                   </div>
                 </div>
               ) : (
                 <p className="mt-2 text-sm text-muted">
-                  Rate unavailable — fix Paycrest configuration or adjust the amount, then wait for a
-                  quote.
+                  Rate unavailable — try again shortly, adjust the amount, or check your connection,
+                  then wait for a quote.
                 </p>
               )}
             </div>
@@ -1296,7 +1227,7 @@ export function AddFundsSheet({
         {flow === "fiat-refund" && fiat && fiat !== "NGN" ? (
           <>
             <p className="text-sm text-muted">
-              Enter the bank account that sends this transfer — Paycrest uses it for{" "}
+              Enter the bank account that sends this transfer — we use it for{" "}
               <strong className="text-foreground">refunds</strong> if needed. Use your own details.
             </p>
             <div>
@@ -1307,7 +1238,7 @@ export function AddFundsSheet({
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-semibold text-muted">Bank / institution</span>
                   <p className="mt-0.5 text-[11px] leading-snug text-muted">
-                    Pick a bank Paycrest supports for {fiat}, or enter the institution identifier
+                    Pick a bank we support for {fiat}, or enter the institution identifier
                     manually if needed.
                   </p>
                 </div>
@@ -1446,7 +1377,7 @@ export function AddFundsSheet({
                       }}
                       className="text-left text-xs font-semibold text-primary active:opacity-80"
                     >
-                      Choose from Paycrest bank list
+                      Choose from the supported bank list
                     </button>
                   ) : null}
                   {institutionsError ? (
@@ -1461,7 +1392,7 @@ export function AddFundsSheet({
                     <input
                       id="refund-inst"
                       autoComplete="off"
-                      placeholder="Institution code or name (Paycrest format)"
+                      placeholder="Institution code or name"
                       value={refundInstitution}
                       onChange={(e) => setRefundInstitution(e.target.value)}
                       className="w-full rounded-2xl border border-border/90 bg-white py-3 pl-12 pr-3 text-base text-foreground shadow-sm outline-none ring-primary/20 transition hover:border-primary/25 focus:ring-2"
@@ -1539,8 +1470,8 @@ export function AddFundsSheet({
                 {formatFiatAmount(fiat, fiatAmountNum)} ({fiat})
               </p>
               <p className="mt-2 leading-relaxed">
-                Paycrest accepted your request but did not return deposit instructions in the
-                response. Save your order id for support:
+                We accepted your request but didn&apos;t receive deposit instructions in the
+                response. Save your order reference for support:
               </p>
               {paycrestOrderId ? (
                 <p className="mt-2 font-mono text-xs font-medium text-foreground">{paycrestOrderId}</p>
@@ -1553,11 +1484,8 @@ export function AddFundsSheet({
           <>
             {usedFallback ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-                Paycrest isn&apos;t configured in this environment — showing{" "}
-                <strong>example</strong> bank details only. Set{" "}
-                <code className="rounded bg-white/80 px-1">PAYCREST_API_BASE_URL</code> and{" "}
-                <code className="rounded bg-white/80 px-1">PAYCREST_API_KEY</code> for live
-                instructions.
+                Demo mode — showing <strong>example</strong> bank details only. Live transfer
+                instructions require a fully configured server environment.
               </div>
             ) : null}
 
@@ -1763,7 +1691,7 @@ export function AddFundsSheet({
     >
       <div className="flex flex-col gap-4 pb-1">
         <p className="text-sm leading-relaxed text-muted">
-          After your bank sends the payment, Paycrest usually confirms it in{" "}
+          After your bank sends the payment, we usually confirm it in{" "}
           <strong className="text-foreground">under 60 seconds</strong>. Then{" "}
           <strong className="text-foreground">USDC</strong> is deposited to your Kudi wallet on Base
           and your balance updates—you don&apos;t need to do anything else.
