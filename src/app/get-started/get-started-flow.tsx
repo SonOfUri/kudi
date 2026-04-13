@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useRef, useState, type MouseEvent } from "react";
 
 /** Sage panel behind sprites (matches earn.svg / shield.svg base) */
 const SAGE_PANEL_BG = "#B6CCC7";
@@ -15,7 +15,17 @@ const TOTAL_SLIDES = 3;
 /** Three splash steps in one client route — no full reloads between slides. */
 export function GetStartedFlow() {
   const [index, setIndex] = useState(0);
+  const lastAdvanceAt = useRef(0);
   const last = index === TOTAL_SLIDES - 1;
+
+  /** Double-click fires two clicks (detail 1 then 2); fast double-tap can do the same — avoid skipping a slide. */
+  const goNext = useCallback((e: MouseEvent<HTMLButtonElement>) => {
+    if (e.detail > 1) return;
+    const now = Date.now();
+    if (now - lastAdvanceAt.current < 450) return;
+    lastAdvanceAt.current = now;
+    setIndex((i) => Math.min(i + 1, TOTAL_SLIDES - 1));
+  }, []);
 
   return (
     <div className="flex min-h-dvh flex-1 flex-col bg-surface">
@@ -120,10 +130,10 @@ export function GetStartedFlow() {
             <>
               <button
                 type="button"
-                onClick={() => setIndex((i) => i + 1)}
+                onClick={goNext}
                 className="min-h-12 w-full rounded-xl bg-primary px-5 text-base font-medium text-primary-foreground active:bg-primary-hover"
               >
-                Get Started
+                Continue
               </button>
               <button
                 type="button"
