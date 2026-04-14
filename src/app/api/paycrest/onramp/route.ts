@@ -7,11 +7,8 @@ import type { PaycrestFiatCode } from "@/lib/paycrest/constants";
 import { isPaycrestFiat } from "@/lib/paycrest/constants";
 import {
   createPaycrestSenderOrder,
-  estimatedUsdcNumber,
   extractBuyQuote,
   fetchPaycrestRate,
-  MAX_ONRAMP_USDC,
-  MIN_ONRAMP_USDC,
   normalizeCreateOrderResponse,
 } from "@/lib/paycrest/client";
 import { isPaycrestOnrampConfigured } from "@/lib/paycrest/config";
@@ -80,27 +77,8 @@ export async function POST(req: Request) {
     const { rate: verifiedRate } = extractBuyQuote(rateJson);
     if (!verifiedRate?.trim()) {
       return NextResponse.json(
-        { error: "Could not verify deposit minimum for this amount." },
+        { error: "Could not verify rate for this amount." },
         { status: 502 },
-      );
-    }
-    const usdcEst = estimatedUsdcNumber(fiatNum, verifiedRate);
-    if (usdcEst === null || usdcEst < MIN_ONRAMP_USDC) {
-      return NextResponse.json(
-        {
-          error: `Minimum deposit is ${MIN_ONRAMP_USDC} USDC (~$${MIN_ONRAMP_USDC}). Increase your amount.`,
-          code: "MIN_ONRAMP_USDC",
-        },
-        { status: 400 },
-      );
-    }
-    if (usdcEst > MAX_ONRAMP_USDC) {
-      return NextResponse.json(
-        {
-          error: `Maximum deposit is ${MAX_ONRAMP_USDC} USDC (~$${MAX_ONRAMP_USDC}). Reduce your amount.`,
-          code: "MAX_ONRAMP_USDC",
-        },
-        { status: 400 },
       );
     }
 

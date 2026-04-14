@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth/session";
 import {
-  estimateNgnFromSell,
   extractSellQuote,
   fetchPaycrestRate,
 } from "@/lib/paycrest/client";
@@ -29,12 +28,9 @@ export async function GET(req: Request) {
   const amount = searchParams.get("amount")?.trim() ?? "";
   const currencyRaw = searchParams.get("currency")?.trim().toUpperCase() ?? "NGN";
 
-  if (!amount || !/^[\d.]+$/.test(amount)) {
-    return NextResponse.json({ error: "Invalid USDC amount" }, { status: 400 });
-  }
-
-  const usdcNum = Number.parseFloat(amount);
-  if (!Number.isFinite(usdcNum) || usdcNum <= 0) {
+  // Keep `amount` in the query string for backward compatibility, but always fetch a unit rate
+  // and let the frontend convert the user's input amount.
+  if (amount && !/^[\d.]+$/.test(amount)) {
     return NextResponse.json({ error: "Invalid USDC amount" }, { status: 400 });
   }
 
@@ -46,18 +42,17 @@ export async function GET(req: Request) {
   }
 
   try {
-    const json = await fetchPaycrestRate(amount, currencyRaw);
-    const { rate, ngnReceive: ngnFromApi } = extractSellQuote(json);
-    const receiveAmount =
-      ngnFromApi?.trim() ||
-      (rate && Number.isFinite(usdcNum) && usdcNum > 0 ? estimateNgnFromSell(usdcNum, rate) : null);
+    const UNIT_AMOUNT_USDC = "1";
+    const json = await fetchPaycrestRate(UNIT_AMOUNT_USDC, currencyRaw);
+    const { rate } = extractSellQuote(json);
     return NextResponse.json({
       currency: currencyRaw,
       amountUsdc: amount,
+      unitAmountUsdc: UNIT_AMOUNT_USDC,
       rate,
       /** Same as `receiveAmount` for this corridor; kept for older clients. */
-      ngnReceive: currencyRaw === "NGN" ? receiveAmount : null,
-      receiveAmount,
+      ngnReceive: null,
+      receiveAmount: null,
     });
   } catch (e) {
     console.error("[api/paycrest/offramp/rate]", e);

@@ -23,7 +23,7 @@ import {
   getBankTransferEnabledFiat,
 } from "@/lib/bank-transfer-directory";
 import { KUDI_CHAIN } from "@/lib/kudi-chain";
-import { estimatedUsdcNumber, MAX_ONRAMP_USDC, MIN_ONRAMP_USDC } from "@/lib/paycrest/client";
+import { estimateUsdcReceive } from "@/lib/paycrest/client";
 
 /** UI metadata + demo fallback when Paycrest env is not configured (NGN only). */
 const BANK_TRANSFER_FIATS = {
@@ -357,37 +357,11 @@ export function AddFundsSheet({
     return `${fiat}:${formatAmountForPaycrest(fiatAmountNum, fiat)}`;
   }, [fiat, fiatAmountOk, fiatAmountNum, fiatAmountRaw]);
 
-  const estimatedUsdcNum = useMemo(() => {
-    if (!fiatAmountOk || !fiat || !rateQuote?.trim() || rateKey !== currentRateKey) return null;
-    const fromRate = estimatedUsdcNumber(fiatAmountNum, rateQuote);
-    if (fromRate !== null) return fromRate;
-    if (rateUsdcReceive?.trim()) {
-      const n = Number.parseFloat(rateUsdcReceive.replace(/,/g, ""));
-      return Number.isFinite(n) && n > 0 ? n : null;
-    }
-    return null;
-  }, [
-    fiat,
-    fiatAmountOk,
-    fiatAmountNum,
-    rateQuote,
-    rateKey,
-    currentRateKey,
-    rateUsdcReceive,
-  ]);
-
-  const meetsMinOnramp =
-    estimatedUsdcNum !== null && estimatedUsdcNum >= MIN_ONRAMP_USDC;
-  const meetsMaxOnramp =
-    estimatedUsdcNum !== null && estimatedUsdcNum <= MAX_ONRAMP_USDC;
-  const onrampBoundsOk = meetsMinOnramp && meetsMaxOnramp;
-
   const rateReady =
     fiatAmountOk &&
     Boolean(rateQuote?.trim()) &&
     rateKey === currentRateKey &&
-    !rateLoading &&
-    onrampBoundsOk;
+    !rateLoading;
 
   useEffect(() => {
     if (!open || flow !== "fiat-amount" || !fiat || !fiatAmountOk) return;
@@ -525,20 +499,11 @@ export function AddFundsSheet({
           typeof (data as { rate: unknown }).rate === "string"
             ? (data as { rate: string }).rate
             : null;
-        const usdcField =
-          typeof data === "object" && data !== null && "usdcReceive" in data
-            ? (data as { usdcReceive: unknown }).usdcReceive
-            : null;
-        const usdcRaw =
-          typeof usdcField === "string" && usdcField.trim().length > 0
-            ? usdcField.trim()
-            : typeof usdcField === "number" && Number.isFinite(usdcField) && usdcField > 0
-              ? String(usdcField)
-              : null;
         if (rate?.trim()) {
-          setRateQuote(rate);
+          const trimmed = rate.trim();
+          setRateQuote(trimmed);
           setRateKey(fingerprint);
-          setRateUsdcReceive(usdcRaw && usdcRaw.length > 0 ? usdcRaw : null);
+          setRateUsdcReceive(estimateUsdcReceive(fiatAmountNum, trimmed));
         } else {
           setRateQuote(null);
           setRateUsdcReceive(null);
@@ -626,8 +591,6 @@ export function AddFundsSheet({
     if (!fiat || !fiatAmountOk || !refundOk) return;
     const submitKey = `${fiat}:${formatAmountForPaycrest(fiatAmountNum, fiat)}`;
     if (!rateQuote?.trim() || rateKey !== submitKey) return;
-    const usdcEst = estimatedUsdcNumber(fiatAmountNum, rateQuote);
-    if (usdcEst === null || usdcEst < MIN_ONRAMP_USDC || usdcEst > MAX_ONRAMP_USDC) return;
     setSubmitLoading(true);
     setSubmitError(null);
     const amountStr = formatAmountForPaycrest(fiatAmountNum, fiat);
@@ -1087,9 +1050,6 @@ export function AddFundsSheet({
               <label htmlFor="fiat-send-amount" className="text-xs font-semibold text-muted">
                 You send ({fiat})
               </label>
-              <p className="mt-0.5 text-[11px] text-muted">
-                ${MIN_ONRAMP_USDC}–${MAX_ONRAMP_USDC} USDC equivalent per transfer.
-              </p>
               <div className="relative mt-1.5">
                 <span
                   className={`pointer-events-none absolute top-1/2 -translate-y-1/2 text-sm font-semibold text-muted ${
@@ -1146,8 +1106,7 @@ export function AddFundsSheet({
                     </div>
                   ) : (
                     <p className="text-sm text-muted">
-                      USDC estimate unavailable for this quote — we need it to enforce the{" "}
-                      ${MIN_ONRAMP_USDC}–${MAX_ONRAMP_USDC} USDC band. Try changing the amount.
+                      USDC estimate unavailable for this quote. Try changing the amount.
                     </p>
                   )}
                   <div className="border-t border-border/70 pt-2.5">
@@ -1162,40 +1121,6 @@ export function AddFundsSheet({
                 </p>
               )}
             </div>
-            {rateQuote && rateKey === currentRateKey && !rateLoading && fiatAmountOk ? (
-              estimatedUsdcNum !== null && estimatedUsdcNum < MIN_ONRAMP_USDC ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                  Minimum deposit is about <strong>${MIN_ONRAMP_USDC} USDC</strong>. At this quote
-                  you&apos;d receive ≈{" "}
-                  <strong className="tabular-nums">
-                    {estimatedUsdcNum.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    USDC
-                  </strong>
-                  — increase the amount to continue.
-                </div>
-              ) : estimatedUsdcNum !== null && estimatedUsdcNum > MAX_ONRAMP_USDC ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                  Maximum deposit is about <strong>${MAX_ONRAMP_USDC} USDC</strong>. At this quote
-                  you&apos;d receive ≈{" "}
-                  <strong className="tabular-nums">
-                    {estimatedUsdcNum.toLocaleString("en-US", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}{" "}
-                    USDC
-                  </strong>
-                  — reduce the amount to continue.
-                </div>
-              ) : estimatedUsdcNum === null ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-                  We couldn&apos;t verify the ${MIN_ONRAMP_USDC}–${MAX_ONRAMP_USDC} USDC limits for
-                  this quote. Try changing the amount slightly.
-                </div>
-              ) : null
-            ) : null}
             {submitError ? (
               <div className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
                 {submitError}
@@ -1440,7 +1365,6 @@ export function AddFundsSheet({
               disabled={
                 !fiatAmountOk ||
                 !refundOk ||
-                !onrampBoundsOk ||
                 submitLoading ||
                 !rateQuote?.trim() ||
                 rateKey !== `${fiat}:${formatAmountForPaycrest(fiatAmountNum, fiat)}`

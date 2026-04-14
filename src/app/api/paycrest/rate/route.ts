@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getSessionUser } from "@/lib/auth/session";
 import { isPaycrestFiat } from "@/lib/paycrest/constants";
-import { estimateUsdcReceive, extractBuyQuote, fetchPaycrestRate } from "@/lib/paycrest/client";
+import { extractBuyQuote, fetchPaycrestRate } from "@/lib/paycrest/client";
 import { isPaycrestOnrampConfigured } from "@/lib/paycrest/config";
 
 /**
@@ -25,7 +25,9 @@ export async function GET(req: Request) {
   const amount = searchParams.get("amount")?.trim() ?? "";
   const currency = (searchParams.get("currency") ?? "NGN").trim().toUpperCase();
 
-  if (!amount || !/^[\d.]+$/.test(amount)) {
+  // Keep `amount` in the query string for backward compatibility, but always fetch a unit rate
+  // and let the frontend convert the user's input amount.
+  if (amount && !/^[\d.]+$/.test(amount)) {
     return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
   }
   if (!isPaycrestFiat(currency)) {
@@ -33,17 +35,15 @@ export async function GET(req: Request) {
   }
 
   try {
-    const json = await fetchPaycrestRate(amount, currency);
-    const { rate, usdcReceive: usdcFromApi } = extractBuyQuote(json);
-    const fiatNum = Number.parseFloat(amount);
-    let usdcReceive =
-      usdcFromApi?.trim() ||
-      (rate && Number.isFinite(fiatNum) && fiatNum > 0 ? estimateUsdcReceive(fiatNum, rate) : null);
+    const UNIT_AMOUNT = "1";
+    const json = await fetchPaycrestRate(UNIT_AMOUNT, currency);
+    const { rate } = extractBuyQuote(json);
     return NextResponse.json({
       currency,
       amount,
+      unitAmount: UNIT_AMOUNT,
       rate,
-      usdcReceive,
+      usdcReceive: null,
     });
   } catch (e) {
     console.error("[api/paycrest/rate]", e);

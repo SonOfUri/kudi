@@ -63,12 +63,6 @@ export function estimateUsdcReceive(fiatAmount: number, rateStr: string): string
   return formatUsdcAmount(usdc);
 }
 
-/** Minimum USDC received for a bank on-ramp (~$1 USD stable). */
-export const MIN_ONRAMP_USDC = 1;
-
-/** Maximum USDC received for a bank on-ramp (~$5 USD stable). */
-export const MAX_ONRAMP_USDC = 5;
-
 /** Numeric USDC estimate from fiat + Paycrest `rate` (same rules as `estimateUsdcReceive`). */
 export function estimatedUsdcNumber(fiatAmount: number, rateStr: string): number | null {
   const s = estimateUsdcReceive(fiatAmount, rateStr);
