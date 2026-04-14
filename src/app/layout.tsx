@@ -29,10 +29,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${geistMono.variable} min-h-dvh bg-white antialiased`}>
-      <body className="bg-white font-sans text-foreground">
+    <html lang="en" className={`${geistMono.variable} min-h-dvh antialiased`}>
+      <body className="font-sans text-foreground">
         <QueryProvider>
-          <div className="relative mx-auto flex min-h-dvh w-full  flex-col bg-surface">
+          <div className="relative mx-auto flex min-h-dvh w-full max-w-[min(100%,var(--app-max-width))] flex-col bg-surface">
             {children}
           </div>
         </QueryProvider>
