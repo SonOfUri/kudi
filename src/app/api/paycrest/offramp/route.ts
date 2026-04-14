@@ -10,7 +10,7 @@ import { db } from "@/lib/db";
 import { KUDI_CHAIN } from "@/lib/kudi-chain";
 import {
   createPaycrestOfframpOrder,
-  estimateNgnFromSell,
+  estimateFiatFromSell,
   fetchPaycrestRate,
   extractSellQuote,
   MIN_OFFRAMP_USDC,
@@ -18,6 +18,8 @@ import {
   offrampTotalUsdcBaseUnits,
 } from "@/lib/paycrest/client";
 import { isPaycrestOnrampConfigured } from "@/lib/paycrest/config";
+import type { PaycrestFiatCode } from "@/lib/paycrest/constants";
+import { isPaycrestFiat } from "@/lib/paycrest/constants";
 import { baseExplorerTx, KUDI_QUOTE_FROM_TOKEN } from "@/lib/lifi/constants";
 import { userFacingTransactionError } from "@/lib/chain-errors";
 import { ensureUserWallet } from "@/lib/wallet-provision";
@@ -38,6 +40,7 @@ const recipientSchema = z.object({
 const bodySchema = z.object({
   amount: z.string().trim().regex(/^[\d.]+$/),
   rate: z.string().trim().min(1).max(80).optional(),
+  currency: z.string().trim().length(3).optional(),
   recipient: recipientSchema,
 });
 
@@ -91,9 +94,15 @@ export async function POST(req: Request) {
   }
 
   let verifiedRate: string | null = parsed.data.rate?.trim() ?? null;
-  let ngnEstimateForDb: string | null = null;
+  let fiatEstimateForDb: string | null = null;
+  const currencyRaw = (parsed.data.currency ?? "NGN").trim().toUpperCase();
+  if (!isPaycrestFiat(currencyRaw)) {
+    return NextResponse.json({ error: "Unsupported currency" }, { status: 400 });
+  }
+  const fiatCurrency = currencyRaw as PaycrestFiatCode;
   try {
-    const rateJson = await fetchPaycrestRate(parsed.data.amount, "NGN");
+    const UNIT_AMOUNT_USDC = "1";
+    const rateJson = await fetchPaycrestRate(UNIT_AMOUNT_USDC, fiatCurrency);
     const { rate: liveSell, ngnReceive: ngnFromApi } = extractSellQuote(rateJson);
     if (!liveSell?.trim()) {
       return NextResponse.json(
@@ -109,9 +118,9 @@ export async function POST(req: Request) {
       );
     }
     verifiedRate = liveTrim;
-    ngnEstimateForDb =
+    fiatEstimateForDb =
       ngnFromApi?.trim() ||
-      estimateNgnFromSell(amountCheck.n, liveTrim) ||
+      estimateFiatFromSell(amountCheck.n, liveTrim) ||
       null;
   } catch (e) {
     console.error("[api/paycrest/offramp] rate verify", e);
@@ -126,6 +135,7 @@ export async function POST(req: Request) {
     const raw = await createPaycrestOfframpOrder({
       amount: parsed.data.amount,
       rate: verifiedRate ?? undefined,
+      fiatCurrency,
       refundAddress: fromAddress,
       recipient: parsed.data.recipient,
       reference,
@@ -165,9 +175,9 @@ export async function POST(req: Request) {
         reference,
         status: normalized.status ?? "PENDING",
         amountUsdc: parsed.data.amount,
-        fiatCurrency: "NGN",
+        fiatCurrency,
         rate: verifiedRate ?? null,
-        ngnEstimate: ngnEstimateForDb,
+        ngnEstimate: fiatEstimateForDb,
         providerAccount: normalized.providerAccountJson
           ? (normalized.providerAccountJson as Prisma.InputJsonValue)
           : undefined,
@@ -179,7 +189,7 @@ export async function POST(req: Request) {
       paycrestOrderId: normalized.paycrestOrderId,
       reference,
       amountUsdc: parsed.data.amount,
-      fiatCurrency: "NGN",
+      fiatCurrency,
     };
 
     await recordWalletActivity({

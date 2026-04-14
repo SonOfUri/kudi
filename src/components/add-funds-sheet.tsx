@@ -39,6 +39,18 @@ const BANK_TRANSFER_FIATS = {
       accountName: "KUDI VIRTUAL COLLECTION",
     },
   },
+  KES: {
+    flag: "/flags/ke.svg",
+    label: "Kenyan shilling",
+    country: "Kenya",
+    symbol: "KSh",
+    locale: "en-KE",
+    fallback: {
+      bankName: "KCB Bank",
+      accountNumber: "0000000000000",
+      accountName: "KUDI VIRTUAL COLLECTION",
+    },
+  },
 } as const;
 
 /** Sender/refund account for NGN Paycrest orders — fixed; not collected in UI. Label: Zenith Bank · ZEIBNGLA */

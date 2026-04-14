@@ -114,13 +114,13 @@ export function extractSellQuote(json: unknown): { rate: string | null; ngnRecei
   return { rate, ngnReceive };
 }
 
-/** Rough NGN from USDC + sell rate (rate usually NGN per 1 USDC when > 50). */
-export function estimateNgnFromSell(usdcAmount: number, rateStr: string): string | null {
+/** Rough fiat receive from USDC + sell rate (rate usually fiat per 1 USDC when > 1). */
+export function estimateFiatFromSell(usdcAmount: number, rateStr: string): string | null {
   const r = Number.parseFloat(String(rateStr).replace(/,/g, ""));
   if (!Number.isFinite(r) || r <= 0 || !Number.isFinite(usdcAmount) || usdcAmount <= 0) return null;
-  const ngn = r > 50 ? usdcAmount * r : usdcAmount / r;
-  if (!Number.isFinite(ngn) || ngn <= 0) return null;
-  return Math.round(ngn).toLocaleString("en-NG");
+  const fiat = r > 1 ? usdcAmount * r : usdcAmount / r;
+  if (!Number.isFinite(fiat) || fiat <= 0) return null;
+  return Math.round(fiat).toLocaleString("en-US");
 }
 
 /** Minimum USDC to cash out to bank (product guardrail). */
@@ -311,6 +311,7 @@ export type PaycrestOfframpRecipient = {
 export type CreateOfframpOrderInput = {
   amount: string;
   rate?: string;
+  fiatCurrency: PaycrestFiatCode;
   refundAddress: string;
   recipient: PaycrestOfframpRecipient;
   reference: string;
@@ -336,7 +337,7 @@ export async function createPaycrestOfframpOrder(input: CreateOfframpOrderInput)
     },
     destination: {
       type: "fiat",
-      currency: "NGN",
+      currency: input.fiatCurrency,
       recipient: {
         institution: input.recipient.institution.trim(),
         accountIdentifier: input.recipient.accountIdentifier.trim(),

@@ -34,6 +34,7 @@ type Flow = "choose" | "usdc" | "usdc-done" | "bank-currency" | "bank" | "bank-d
 /** Flag asset under `public/` when present; otherwise the directory row uses a regional emoji. */
 const OFFRAMP_FIAT_FLAG_SRC: Partial<Record<BankTransferEnabledFiat, string>> = {
   NGN: "/flags/ng.svg",
+  KES: "/flags/ke.svg",
 };
 
 /** Match “Add Money From” bank strip (see `add-funds-sheet.tsx`). */
@@ -482,6 +483,7 @@ export function CashOutSheet({
         body: JSON.stringify({
           amount: amountStr,
           rate: bankRate.trim(),
+          currency: bankOfframpFiat,
           recipient: {
             institution: bankInstitution.trim(),
             accountIdentifier: bankAccountId.trim(),
