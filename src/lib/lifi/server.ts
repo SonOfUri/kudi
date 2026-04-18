@@ -23,7 +23,7 @@ export async function fetchEarnVaultsFromSearchParams(searchParams: URLSearchPar
   }
   outbound.set("chainId", String(KUDI_CHAIN.chainId));
   const qs = outbound.toString();
-  const url = qs ? `${LIFI_EARN_BASE}/v1/earn/vaults?${qs}` : `${LIFI_EARN_BASE}/v1/earn/vaults`;
+  const url = qs ? `${LIFI_EARN_BASE}/v1/vaults?${qs}` : `${LIFI_EARN_BASE}/v1/vaults`;
   const res = await fetch(url, {
     headers: { "x-lifi-api-key": key },
     cache: "no-store",

@@ -148,7 +148,7 @@ export async function GET(req: Request) {
     const wallet = await ensureUserWallet(user.id);
     const apiKey = process.env.LIFI_API_KEY?.trim();
 
-    const url = `${LIFI_EARN_BASE}/v1/earn/portfolio/${wallet.address}/positions`;
+    const url = `${LIFI_EARN_BASE}/v1/portfolio/${wallet.address}/positions`;
     const headers: HeadersInit = {
       accept: "application/json",
     };
