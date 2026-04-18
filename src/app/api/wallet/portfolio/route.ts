@@ -147,16 +147,20 @@ export async function GET(req: Request) {
   try {
     const wallet = await ensureUserWallet(user.id);
     const apiKey = process.env.LIFI_API_KEY?.trim();
-
-    const url = `${LIFI_EARN_BASE}/v1/portfolio/${wallet.address}/positions`;
-    const headers: HeadersInit = {
-      accept: "application/json",
-    };
-    if (apiKey) {
-      headers["x-lifi-api-key"] = apiKey;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: "Server misconfiguration", details: "LIFI_API_KEY is not set" },
+        { status: 503 },
+      );
     }
 
-    const res = await fetch(url, { headers });
+    const url = `${LIFI_EARN_BASE}/v1/portfolio/${wallet.address}/positions`;
+    const res = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "x-lifi-api-key": apiKey,
+      },
+    });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");

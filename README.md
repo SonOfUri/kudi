@@ -44,7 +44,7 @@ All LI.FI calls use the **`x-lifi-api-key`** header from **`LIFI_API_KEY`**.
 
 | API | Base URL (in code) | Purpose |
 |-----|-------------------|---------|
-| Earn Data | `https://earn.li.fi` | `GET /v1/earn/vaults`, portfolio positions (`/v1/earn/portfolio/{address}/positions`) |
+| Earn Data | `https://earn.li.fi` | `GET /v1/vaults`, `GET /v1/vaults/{chainId}/{vault}`, `GET /v1/chains`, `GET /v1/protocols`, portfolio (`GET /v1/portfolio/{address}/positions`) — `/v1/earn/...` paths are removed |
 | Composer | `https://li.quest/v1/quote` | Quotes for deposit / withdraw route building |
 
 Server helpers live under **`src/lib/lifi/`** (for example `server.ts`, `constants.ts`, portfolio merge and vault helpers). App routes include **`/api/lifi/vaults`**, **`/api/lifi/deposit`**, **`/api/lifi/withdraw`**, and portfolio aggregation in **`/api/wallet/portfolio`**.

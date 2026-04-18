@@ -11,7 +11,8 @@
     "db:push": "prisma db push",
     "db:wake": "node scripts/wake-db.cjs",
     "db:migrate": "prisma migrate dev",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "lifi:smoke": "node scripts/lifi-endpoint-smoke.cjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.7.0",
